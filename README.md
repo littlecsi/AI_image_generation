@@ -1,2 +1,5 @@
 # AI_image_generation
-This repository is for my FYP at Imperial College London with projec title "AI Image Generation using Diffusion Model"
+Diffusion models have emerged as the state-of-the-art generative models, beating other AI methods such as GAN. A diffusion model is basically a random process where you add more and more noise, then run it backward with the help of a neural network. Amazingly, noise is your friend here. It can be used in image synthesis, computer vision, natural language processing etc. Furthermore, diffusion models have close connections with other research areas, such as information theory, probability and random processes, and statistical physics. This project is focused on music generation using the method of Markov chains. Student should have a good mathematical background. Knowledge of random processes is essential (student required to take
+the two modules Probability and Stochastic Processes, Information Theory). Good programming skill is required.
+
+Reference: L. YANG et al., Diffusion Models: A Comprehensive Survey of Methods and Applications.
