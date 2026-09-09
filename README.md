@@ -77,34 +77,42 @@ rather than learning them.
 
 30 epochs per run on an RTX 4070, `T = 1000`.
 
-| Dataset | Network | Parameters | Loss (epoch 1) | Loss (epoch 30) | SSIM | PSNR (dB) |
-|---|---|---|---|---|---|---|
-| CIFAR-10 | ResUNet | 2,473,475 | **0.13775** | 0.06108 | 0.7388 | 24.71 |
-| CIFAR-10 | Plain UNet | 2,473,475 | 0.14633 | 0.06084 | 0.7373 | 24.70 |
-| CIFAR-10 | DDPM UNet | 2,356,739 | 0.18508 | **0.05967** | **0.7449** | **24.83** |
-| CelebA | ResUNet | 2,612,419 | **0.14205** | 0.03716 | 0.8016 | 27.10 |
-| CelebA | Plain UNet | 2,612,419 | 0.16413 | 0.03679 | 0.8004 | 27.11 |
-| CelebA | DDPM UNet | 2,356,739 | 0.15588 | **0.03476** | **0.8174** | **27.42** |
+| Dataset | Network | Parameters | Loss (ep. 1) | Loss (ep. 30) | SSIM | PSNR (dB) | FID ↓ | IS ↑ |
+|---|---|---|---|---|---|---|---|---|
+| CIFAR-10 | ResUNet | 2,473,475 | **0.13775** | 0.06108 | 0.7383 | 24.70 | 94.93 | 4.711 |
+| CIFAR-10 | Plain UNet | 2,473,475 | 0.14633 | 0.06084 | 0.7371 | 24.69 | 84.29 | 4.625 |
+| CIFAR-10 | DDPM UNet | 2,356,739 | 0.18508 | **0.05967** | **0.7450** | **24.84** | **68.09** | **5.655** |
+| CelebA | ResUNet | 2,612,419 | **0.14205** | 0.03716 | 0.8017 | 27.10 | **76.06** | — |
+| CelebA | Plain UNet | 2,612,419 | 0.16413 | 0.03679 | 0.8006 | 27.12 | 135.18 | — |
+| CelebA | DDPM UNet | 2,356,739 | 0.15588 | **0.03476** | **0.8176** | **27.43** | 76.93 | — |
 
-Three findings:
+FID from 2048 samples per model. IS is reported for CIFAR-10 only: CelebA is a single semantic
+category, so the class diversity the measure depends on is undefined.
+
+Four findings:
 
 1. **Residual shortcuts accelerate early optimisation.** After one epoch the proposed network leads
    its shortcut-free twin by 5.9% on CIFAR-10 and 13.5% on CelebA. The two networks are otherwise
    identical, so the shortcut is the only possible cause.
-2. **The advantage does not persist.** Plain UNet overtakes by the fifth epoch and finishes
-   marginally ahead on loss, while ResUNet finishes marginally ahead on SSIM and level on PSNR. All
-   three margins are below half a per cent and they do not agree, so no benefit from the shortcut
-   can be demonstrated at convergence.
-3. **Depth and attention matter more than the shortcut.** The reference network leads on every
-   measurement, on both datasets, using fewer parameters — at roughly 2.3× the training cost per
-   epoch.
+2. **Restoration measures cannot separate the two networks.** Final loss, mean SSIM and mean PSNR
+   agree to within 1%, 0.5% and 0.02 dB. Repeating the evaluation with the weights unchanged moved
+   the numbers by a comparable amount, so the differences sit at the noise floor.
+3. **Generative quality separates them sharply, and the direction depends on depth.** On CelebA,
+   where the network has three resolution stages, removing the shortcut costs 78% in FID
+   (76.06 → 135.18). On CIFAR-10, with two stages, the ordering reverses (94.93 vs 84.29).
+   **Networks that denoise identically well do not generate equally well**, and no restoration
+   measure predicted it.
+4. **The reference architecture is strongest overall.** It leads every restoration measure on both
+   datasets and CIFAR-10 FID by a wide margin, using fewer parameters — at ~2.3× the training cost.
+   Only on CelebA FID is it matched, by ResUNet at less than half the compute.
 
-The hypothesis that combining residual learning with a UNet backbone would improve generated image
-quality is **not supported** by these measurements.
+The hypothesis receives **partial and conditional support**: residual learning does not improve
+generated image quality in general and is mildly harmful at the lower resolution, but at the higher
+resolution — where the network is deep enough for the optimisation difficulty residual learning was
+invented to address — the improvement is substantial.
 
-> FID and Inception Score figures are omitted here pending a run at the full sample size. Values
-> computed from a small sample are unreliable: the Inception feature space has 2048 dimensions, so
-> fewer samples than that leave the covariance term degenerate.
+A nearest-neighbour check against the training set, with real and blurred held-out images as
+controls, found no evidence of memorisation on either dataset.
 
 ## Repository layout
 
