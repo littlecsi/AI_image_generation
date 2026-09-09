@@ -2,3 +2,5 @@
 /data
 /generated_samples
 /denoising_process
+/.diffusion
+__pycache__/
