@@ -4,3 +4,29 @@
 /denoising_process
 /.diffusion
 __pycache__/
+
+# LaTeX 보조 파일
+*.aux
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.bbl
+*.bcf
+*.blg
+*.fls
+*.fdb_latexmk
+*.run.xml
+*.synctex.gz
+*.nav
+*.snm
+*.vrb
+*.xdv
+
+# 논문 소스는 추적하지 않고 컴파일된 PDF만 커밋
+dissertation/*
+!dissertation/main.pdf
+
+# VS Code 로컬 설정
+.vscode/
