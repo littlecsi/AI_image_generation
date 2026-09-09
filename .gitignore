@@ -1,7 +1,5 @@
 
 /data
-/generated_samples
-/denoising_process
 /.diffusion
 __pycache__/
 
@@ -31,7 +29,6 @@ dissertation/*
 # VS Code 로컬 설정
 .vscode/
 
-# 학습된 모델과 데이터 캐시 (용량이 큼)
+# 학습된 모델과 데이터 캐시 (용량이 큼). 생성 결과물은 추적한다
 model/
 data/
-denoising_process/
