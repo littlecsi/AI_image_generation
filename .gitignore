@@ -34,4 +34,8 @@ dissertation/legacy/
 # 디렉터리를 통째로 무시하면 git 이 안으로 들어가지 않아 예외 규칙이 먹지 않으므로 model/* 로 쓴다
 model/*
 !model/seed_study.json
+# 확장 연구 결과도 논문 수치의 출처이므로 추적한다. 체크포인트는 제외
+!model/extension/
+model/extension/*
+!model/extension/extension_study.json
 data/
