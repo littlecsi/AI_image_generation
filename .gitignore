@@ -30,5 +30,8 @@ dissertation/*
 .vscode/
 
 # 학습된 모델과 데이터 캐시 (용량이 큼). 생성 결과물은 추적한다
-model/
+# 체크포인트는 용량이 커서 제외하되, 시드 연구 결과 데이터는 추적한다.
+# 디렉터리를 통째로 무시하면 git 이 안으로 들어가지 않아 예외 규칙이 먹지 않으므로 model/* 로 쓴다
+model/*
+!model/seed_study.json
 data/
