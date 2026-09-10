@@ -77,39 +77,54 @@ rather than learning them.
 
 30 epochs per run on an RTX 4070, `T = 1000`.
 
-| Dataset | Network | Parameters | Loss (ep. 1) | Loss (ep. 30) | SSIM | PSNR (dB) | FID ↓ | IS ↑ |
-|---|---|---|---|---|---|---|---|---|
-| CIFAR-10 | ResUNet | 2,473,475 | **0.13775** | 0.06108 | 0.7383 | 24.70 | 94.93 | 4.711 |
-| CIFAR-10 | Plain UNet | 2,473,475 | 0.14633 | 0.06084 | 0.7371 | 24.69 | 84.29 | 4.625 |
-| CIFAR-10 | DDPM UNet | 2,356,739 | 0.18508 | **0.05967** | **0.7450** | **24.84** | **68.09** | **5.655** |
-| CelebA | ResUNet | 2,612,419 | **0.14205** | 0.03716 | 0.8017 | 27.10 | **76.06** | — |
-| CelebA | Plain UNet | 2,612,419 | 0.16413 | 0.03679 | 0.8006 | 27.12 | 135.18 | — |
-| CelebA | DDPM UNet | 2,356,739 | 0.15588 | **0.03476** | **0.8176** | **27.43** | 76.93 | — |
+Every configuration was trained under **three random seeds** (0, 1, 2). Figures are the mean over
+the three runs; comparisons between architectures are paired within seed.
 
-FID from 2048 samples per model. IS is reported for CIFAR-10 only: CelebA is a single semantic
-category, so the class diversity the measure depends on is undefined.
+| Dataset | Network | Parameters | Loss (ep. 30) | SSIM | PSNR (dB) | FID ↓ |
+|---|---|---|---|---|---|---|
+| CIFAR-10 | ResUNet | 2,473,475 | 0.06138 | 0.7387 | 24.68 | 104.07 ± 21.13 |
+| CIFAR-10 | Plain UNet | 2,473,475 | 0.06108 | 0.7356 | 24.68 | 107.52 ± 32.86 |
+| CIFAR-10 | DDPM UNet | 2,356,739 | **0.06012** | **0.7445** | **24.84** | **72.88 ± 7.80** |
+| CelebA | ResUNet | 2,612,419 | 0.03691 | 0.8011 | 27.10 | 83.08 ± 23.98 |
+| CelebA | Plain UNet | 2,612,419 | 0.03661 | 0.7991 | 27.11 | 146.39 ± 22.71 |
+| CelebA | DDPM UNet | 2,356,739 | **0.03449** | **0.8164** | **27.43** | **81.57 ± 10.76** |
+
+FID from 2048 samples per model per seed. IS is omitted here: CelebA is a single semantic category,
+so the class diversity the measure depends on is undefined.
+
+**Paired ResUNet − Plain UNet, FID** (negative favours ResUNet):
+
+| Dataset | Seed 0 | Seed 1 | Seed 2 | Mean ± SD | Sign |
+|---|---|---|---|---|---|
+| CIFAR-10 | +10.64 | −16.89 | −4.12 | −3.46 ± 13.78 | **flips** |
+| CelebA | −59.12 | −21.68 | −109.13 | **−63.31 ± 43.88** | **consistent** |
 
 Four findings:
 
-1. **Residual shortcuts accelerate early optimisation.** After one epoch the proposed network leads
-   its shortcut-free twin by 5.9% on CIFAR-10 and 13.5% on CelebA. The two networks are otherwise
-   identical, so the shortcut is the only possible cause.
-2. **Restoration measures cannot separate the two networks.** Final loss, mean SSIM and mean PSNR
-   agree to within 1%, 0.5% and 0.02 dB. Repeating the evaluation with the weights unchanged moved
-   the numbers by a comparable amount, so the differences sit at the noise floor.
-3. **Generative quality separates them sharply, and the direction depends on depth.** On CelebA,
-   where the network has three resolution stages, removing the shortcut costs 78% in FID
-   (76.06 → 135.18). On CIFAR-10, with two stages, the ordering reverses (94.93 vs 84.29).
-   **Networks that denoise identically well do not generate equally well**, and no restoration
-   measure predicted it.
-4. **The reference architecture is strongest overall.** It leads every restoration measure on both
-   datasets and CIFAR-10 FID by a wide margin, using fewer parameters — at ~2.3× the training cost.
-   Only on CelebA FID is it matched, by ResUNet at less than half the compute.
+1. **Residual shortcuts accelerate early optimisation.** The proposed network leads its
+   shortcut-free twin at epoch 1 in all six paired runs, by 5.4% on average on CIFAR-10 and 11.1%
+   on CelebA. The two are otherwise identical, so the shortcut is the only possible cause.
+2. **Restoration measures cannot separate them.** Loss, SSIM and PSNR agree to within half a per
+   cent, and the two that lean at all lean in opposite directions — loss favours Plain, SSIM
+   favours ResUNet, PSNR changes sign between seeds.
+3. **Generative quality separates them on the deeper configuration only.** On CelebA (three
+   resolution stages) ResUNet leads in every seed, by a mean of 63.31 FID against a seed-to-seed SD
+   of ~23. On CIFAR-10 (two stages) the sign flips and the difference is −3.46 ± 13.78, i.e. no
+   effect. **Networks that denoise identically well do not generate equally well**, and no
+   restoration measure predicted it.
+4. **The reference architecture is strongest overall** and the most stable (FID SD 7.80 vs 21.13
+   and 32.86). It leads CIFAR-10 FID by 31.19 in every seed, using fewer parameters — at ~2.3× the
+   training cost. Only on CelebA FID is it matched, by ResUNet at less than half the compute.
 
-The hypothesis receives **partial and conditional support**: residual learning does not improve
-generated image quality in general and is mildly harmful at the lower resolution, but at the higher
-resolution — where the network is deep enough for the optimisation difficulty residual learning was
-invented to address — the improvement is substantial.
+The hypothesis receives **partial and conditional support**: at two resolution stages residual
+learning makes no detectable difference; at three stages it leads in every seed by a margin larger
+than the observed spread. Three seeds show the direction is consistent but are too few for a
+significance test — the paired CelebA result gives *t*(2) = −2.50.
+
+> A methodological note: **FID is far noisier than the restoration measures at this scale** (SD 7.8
+> to 32.9, against thousandths for SSIM). Single-run FID comparisons of diffusion models trained
+> this briefly are not reliable — the apparent CIFAR-10 reversal in the first single-seed run turned
+> out to be noise.
 
 A nearest-neighbour check against the training set, with real and blurred held-out images as
 controls, found no evidence of memorisation on either dataset.
