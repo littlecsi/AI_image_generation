@@ -14,19 +14,19 @@ The answer to the question as posed is that residual learning helps, but conditi
 the way the project anticipated.
 
 The shortcut makes optimisation easier at the outset. After one epoch the proposed network leads its
-shortcut-free twin in all six paired runs, by $5.4\%$ on average on CIFAR-10 and $11.1\%$ on
-CelebA, and since the two differ in nothing else the shortcut is the only possible cause. That
-advantage is gone by the fifth epoch and does not reappear: at convergence the restoration measures
-cannot separate the two networks, and the two that lean at all lean in opposite directions, the
-training loss favouring the plain network and structural similarity the proposed one, both by less
-than half of one per cent.
+shortcut-free twin in all six paired runs, by $5.4\%$ on average on CIFAR-10 and $11.1\%$ on CelebA,
+and since the two differ in nothing else the shortcut is the only possible cause. That advantage is
+gone by the fifth epoch and does not reappear: at convergence the restoration measures cannot
+separate the two networks, and the two that lean at all lean in opposite directions, the training
+loss favouring the plain network and structural similarity the proposed one, both by less than half
+of one per cent.
 
 They are not, however, indistinguishable as generators, and repeating each configuration under three
 seeds is what makes the distinction legible. On CelebA the proposed network leads in every seed, by
-$59$, $22$ and $109$ Fréchet Inception Distance, for a mean advantage of $63.31$ against a
+$59$, $22$ and $109$ Fr\'echet Inception Distance, for a mean advantage of $63.31$ against a
 seed-to-seed standard deviation of about $23$ for either network. On CIFAR-10 the same comparison
-yields $-3.46 \pm 13.78$ with the sign changing between seeds, which is to say no effect at all;
-the apparent reversal seen in a single run was noise. The difference between the two datasets tracks
+yields $-3.46 \pm 13.78$ with the sign changing between seeds, which is to say no effect at all; the
+apparent reversal seen in a single run was noise. The difference between the two datasets tracks
 depth, the CelebA configuration having three resolution stages against two for CIFAR-10, and
 residual connections exist precisely to make deeper networks optimisable. Where the network is
 shallow enough not to need one, adding it changes nothing; where it is deep enough to struggle
@@ -38,15 +38,15 @@ either competitor, at roughly $2.3$ times the training cost per epoch. Only on C
 matched, and there the proposed network achieves the same quality for less than half the compute.
 
 Two results of a different kind emerged from the work and are worth recording. The first is
-methodological: a network can denoise as well as another and generate images that are $78\%$ worse
-by FID. The training objective averages the noise-prediction error uniformly over timesteps, whereas
-generation composes a thousand such predictions in sequence, so errors that are small on average but
-systematic at particular timesteps compound through that composition. Evaluating a diffusion model
-by reconstruction alone is not sufficient. The second is practical: the algebraic form of the
-posterior mean used in the reverse process is numerically stable only for a network whose noise
-prediction is already accurate. Without clipping the implied estimate of $x_0$ at every step, the
-reverse process diverged from a standard deviation of $1$ to approximately $16$, in single precision
-as well as mixed, and produced saturated noise from every model.
+methodological: a network can denoise as well as another and generate images that are $76\%$ worse
+by FID on the three-seed mean. The training objective averages the noise-prediction error uniformly
+over timesteps, whereas generation composes a thousand such predictions in sequence, so errors that
+are small on average but systematic at particular timesteps compound through that composition.
+Evaluating a diffusion model by reconstruction alone is not sufficient. The second is practical: the
+algebraic form of the posterior mean used in the reverse process is numerically stable only for a
+network whose noise prediction is already accurate. Without clipping the implied estimate of $x_0$
+at every step, the reverse process diverged from a standard deviation of $1$ to approximately $16$,
+in single precision as well as mixed, and produced saturated noise from every model.
 
 \section*{Limitations}
 
@@ -59,21 +59,26 @@ offered for the difference between datasets is consistent with the evidence but 
 it, since depth and resolution vary together here; separating them would require the two-stage and
 three-stage configurations to be trained on the same images.
 
-The seed study also showed that the Fréchet Inception Distance is far noisier at this scale than the
-restoration measures, with standard deviations between $7.8$ and $32.9$ against thousandths for
+The seed study also showed that the Fr\'echet Inception Distance is far noisier at this scale than
+the restoration measures, with standard deviations between $7.8$ and $32.9$ against thousandths for
 SSIM. Any comparison of diffusion models drawn from a single training run of this length, including
 several reported in the earlier sections of this work before the repetition was carried out, should
 be treated with corresponding caution.
 
-Thirty epochs amounts to roughly eleven thousand optimisation steps, some two orders of magnitude
-short of the schedule used for the published CIFAR-10 configuration, and the networks are about
-fourteen times smaller. The absolute FID values are correspondingly poor and should not be compared
-with the literature; only the relative ordering between the three networks, which were trained
-identically, carries meaning. The Fréchet Inception Distance was computed from two thousand samples,
-which is the smallest number at which the estimate is not degenerate given the dimensionality of the
-Inception feature space, and remains biased upward at that size.
+Thirty epochs amounts to roughly eleven thousand optimisation steps against the eight hundred
+thousand of the published CIFAR-10 configuration, and the networks are about fourteen times smaller.
+The absolute FID values are correspondingly poor and should not be compared with the literature;
+only the relative ordering between the three networks, which were trained identically, carries
+meaning. The Fr\'echet Inception Distance was computed from 2048 samples, which is the smallest
+number at which the estimate is not degenerate given the dimensionality of the Inception feature
+space, and remains biased upward at that size.
 
-One standard practice was omitted. Diffusion implementations customarily sample not from the trained weights themselves but from an exponential moving average of them, which suppresses the fluctuation of the final iterates and typically improves the Fr\'echet Inception Distance appreciably. No such average was maintained here, so the absolute sample quality reported is lower than the same training run would otherwise have produced. The omission applies identically to all six runs and so does not affect the comparison between them.
+One standard practice was omitted. Diffusion implementations customarily sample not from the trained
+weights themselves but from an exponential moving average of them, which suppresses the fluctuation
+of the final iterates and typically improves the Fr\'echet Inception Distance appreciably. No such
+average was maintained here, so the absolute sample quality reported is lower than the same training
+run would otherwise have produced. The omission applies identically to all six runs and so does not
+affect the comparison between them.
 
 The memorisation check operates in pixel space and would not detect a reproduction that had been
 shifted or recoloured. Negative Log-Likelihood was excluded on the grounds that this implementation
@@ -92,7 +97,17 @@ of the proposed network on a single dataset, each with and without the shortcut,
 from resolution and determine whether the benefit of residual learning grows with the former as the
 argument predicts.
 
-A separate line of work concerns the absolute quality of the samples rather than the comparison between architectures. Three changes would address it, in descending order of expected effect and ascending order of cost. Maintaining an exponential moving average of the weights and sampling from it is the cheapest, requiring a few lines and no change to the experimental design. Extending training by an order of magnitude is the most certain, since Section~\ref{sec:indistinct} attributes the indistinctness principally to the budget. Replacing the ancestral sampler with the deterministic variant of Song et al.\ would allow comparable quality from roughly fifty reverse steps instead of a thousand, which would also reduce the cost of computing the Fr\'echet Inception Distance by a factor of twenty and so make the repeated runs recommended above considerably cheaper. None of the three alters the architectures under test, so each could be applied to all six configurations without disturbing the comparison.
+A separate line of work concerns the absolute quality of the samples rather than the comparison
+between architectures. Three changes would address it, in descending order of expected effect and
+ascending order of cost. Maintaining an exponential moving average of the weights and sampling from
+it is the cheapest, requiring a few lines and no change to the experimental design. Extending
+training by an order of magnitude is the most certain, since Section~\ref{sec:indistinct} attributes
+the indistinctness principally to the budget. Replacing the ancestral sampler with the deterministic
+variant of Song et al.\ would allow comparable quality from roughly fifty reverse steps instead of a
+thousand, which would also reduce the cost of computing the Fr\'echet Inception Distance by a factor
+of twenty and so make the repeated runs recommended above considerably cheaper. None of the three
+alters the architectures under test, so each could be applied to all six configurations without
+disturbing the comparison.
 
 Beyond that, learning the reverse-process variances rather than fixing them would make the
 variational bound informative and bring Negative Log-Likelihood within reach, and the Variational

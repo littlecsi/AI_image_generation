@@ -5,15 +5,14 @@
 
 The six runs specified in Section~\ref{sec:simulation} were carried out on a single NVIDIA GeForce
 RTX 4070. Every run used $T = 1000$ diffusion steps under the cosine schedule, a batch size of 128,
-the Adam optimiser at a learning rate of $2 \times 10^{-4}$, thirty epochs, and random
-horizontal flipping as the only augmentation. Every configuration was trained three times, under
-seeds 0, 1 and 2; the seed governs weight initialisation, batch order and augmentation, and within
-a given seed all three architectures receive the same one. Figures below are reported as the mean
-over the three runs with the sample standard deviation, and comparisons between two architectures
-are paired within seed. Training used bfloat16 mixed precision
-with the channels-last memory format; because these settings alter neither the model definition nor
-the objective, they affect the wall-clock cost of a run but not the comparison between
-architectures.
+the Adam optimiser at a learning rate of $2 \times 10^{-4}$, thirty epochs, and random horizontal
+flipping as the only augmentation. Every configuration was trained three times, under seeds 0, 1 and
+2; the seed governs weight initialisation, batch order and augmentation, and within a given seed all
+three architectures receive the same one. Figures below are reported as the mean over the three runs
+with the sample standard deviation, and comparisons between two architectures are paired within
+seed. Training used bfloat16 mixed precision with the channels-last memory format; because these
+settings alter neither the model definition nor the objective, they affect the wall-clock cost of a
+run but not the comparison between architectures.
 
 Table~\ref{tab:params} records the resulting parameter budgets. The proposed network and the plain
 variant are identical in size, as an identity shortcut introduces no parameters, so the comparison
@@ -42,6 +41,7 @@ which means that any advantage it shows cannot be attributed to additional capac
 \end{table}
 
 \section{Training Convergence}
+\label{sec:convergence}
 
 Table~\ref{tab:loss} reports the epoch-averaged noise-prediction loss at five points during
 training. Two patterns are visible, and they point in opposite directions.
@@ -58,35 +58,39 @@ training. Two patterns are visible, and they point in opposite directions.
         Dataset & Architecture & 1 & 5 & 10 & 20 & 30 \\
         \midrule
         CIFAR-10 & ResUNet    & \textbf{0.13775} & 0.07111 & 0.06619 & 0.06249 & 0.06108 \\
-        CIFAR-10 & plain UNet & 0.14633 & \textbf{0.07033} & \textbf{0.06555} & \textbf{0.06212} & 0.06084 \\
+        CIFAR-10 & plain UNet & 0.14633 & \textbf{0.07033} & \textbf{0.06555} & \textbf{0.06212} &
+        0.06084 \\
         CIFAR-10 & DDPM UNet  & 0.18508 & 0.07135 & 0.06593 & 0.06165 & \textbf{0.05967} \\
         \midrule
         CelebA   & ResUNet    & \textbf{0.14205} & 0.04735 & 0.04110 & 0.03844 & 0.03716 \\
         CelebA   & plain UNet & 0.16413 & 0.04705 & 0.04055 & 0.03799 & 0.03679 \\
-        CelebA   & DDPM UNet  & 0.15588 & \textbf{0.04316} & \textbf{0.03779} & \textbf{0.03573} & \textbf{0.03476} \\
+        CelebA & DDPM UNet & 0.15588 & \textbf{0.04316} & \textbf{0.03779} & \textbf{0.03573} &
+        \textbf{0.03476} \\
         \bottomrule
     \end{tabular}
 \end{table}
 
 The first is an early advantage for residual learning. After a single epoch the proposed network has
 the lowest loss on both datasets in every one of the three runs, ahead of the plain variant by
-$5.4\%$ on average on CIFAR-10 and $11.1\%$ on CelebA. Since the two networks are identical apart from the identity shortcut, this difference is
-attributable to that shortcut alone, and it is consistent with the argument of the original ResNet
-work that a residual formulation is easier to optimise than an unreferenced one.
+$5.4\%$ on average on CIFAR-10 and $11.1\%$ on CelebA. Since the two networks are identical apart
+from the identity shortcut, this difference is attributable to that shortcut alone, and it is
+consistent with the argument of the original ResNet work that a residual formulation is easier to
+optimise than an unreferenced one.
 
-The second pattern is that the advantage does not survive. Somewhere between the third and the
-sixth epoch, depending on the seed, the plain network overtakes the proposed one on both datasets, and at convergence it remains marginally ahead in
-every run, by $0.0003$ on both datasets. The consistency is striking: the sign never changes across
-the six paired comparisons, and a paired test over the three seeds gives $t(2) = 6.1$ on CIFAR-10
-and $9.0$ on CelebA. The magnitude is not: $0.0003$ is one half of one per cent of the loss. Section~\ref{sec:distribution} shows that this near-equality
-on the training objective is profoundly misleading about the quality of the images the two networks
-actually generate.
+The second pattern is that the advantage does not survive. Somewhere between the third and the sixth
+epoch, depending on the seed, the plain network overtakes the proposed one on both datasets, and at
+convergence it remains marginally ahead in every run, by $0.0003$ on both datasets. The direction is
+consistent: the sign never changes across the six paired comparisons, and a paired test over the
+three seeds gives $t(2) = 6.1$ on CIFAR-10 and $9.0$ on CelebA. The magnitude is not: $0.0003$ is
+one half of one per cent of the loss. Section~\ref{sec:distribution} shows that this near-equality
+on the training objective is a poor guide to the quality of the images the two networks actually
+generate.
 
 The reference network behaves differently again. It begins worst on CIFAR-10, at $0.18508$, which is
-what a deeper network with more layers to coordinate would be expected to do, but it finishes with the lowest loss on
-both datasets under every seed. The epoch at which it takes the lead is itself unstable, falling
-anywhere between the second and the twelfth on CIFAR-10 and between the first and the second on
-CelebA. The full per-epoch record is given in Appendix~\ref{sec:loss-full}.
+what a deeper network with more layers to coordinate would be expected to do, but it finishes with
+the lowest loss on both datasets under every seed. The epoch at which it takes the lead is itself
+unstable, falling anywhere between the second and the twelfth on CIFAR-10 and between the first and
+the second on CelebA. The full per-epoch record is given in Appendix~\ref{sec:loss-full}.
 
 \section{Restoration Accuracy}
 
@@ -133,14 +137,14 @@ corrupted, and almost any denoiser recovers it; the measurement discriminates on
 grows.
 
 The second is that the proposed and plain networks cannot be separated. Their mean SSIM differs by
-$0.0012$ on CIFAR-10 and $0.0011$ on CelebA, and their mean PSNR by $0.01$\,dB and $0.02$\,dB. Repeating the whole procedure under
-three seeds puts those figures in context. The seed-to-seed standard deviation of mean SSIM is
-$0.0013$ for the proposed network and $0.0030$ for the plain one on CIFAR-10, which is of the same
-order as the $0.0031$ that separates them. The paired differences do favour the proposed network
-consistently, at $t(2) = 2.0$ on CIFAR-10 and $2.4$ on CelebA, but they run in the opposite direction
-to the training loss, and PSNR changes sign between seeds altogether. The restoration measures are
-individually stable and jointly inconclusive: they can be trusted to a thousandth, and at that resolution
-they do not agree on which network is better.
+$0.0012$ on CIFAR-10 and $0.0011$ on CelebA, and their mean PSNR by $0.01$\,dB and $0.02$\,dB.
+Repeating the whole procedure under three seeds puts those figures in context. The seed-to-seed
+standard deviation of mean SSIM is $0.0013$ for the proposed network and $0.0030$ for the plain one
+on CIFAR-10, which is of the same order as the $0.0031$ that separates them. The paired differences
+do favour the proposed network consistently, at $t(2) = 2.0$ on CIFAR-10 and $2.4$ on CelebA, but
+they run in the opposite direction to the training loss, and PSNR changes sign between seeds
+altogether. The restoration measures are individually stable and jointly inconclusive: they can be
+trusted to a thousandth, and at that resolution they do not agree on which network is better.
 
 The third is that the reference network leads at every noise level on both datasets and on both
 measures, and its margin grows with $t$. Its advantage is consistently larger on CelebA than on
@@ -150,8 +154,8 @@ CIFAR-10, which is the pattern the higher resolution was introduced to expose.
 \label{sec:distribution}
 
 The measures reported so far compare the networks as denoisers. Table~\ref{tab:fid} compares them as
-generators, using two thousand samples drawn from each model through the complete thousand-step
-reverse process.
+generators, using 2048 samples drawn from each model through the complete thousand-step reverse
+process.
 
 \begin{table}[htbp]
     \centering
@@ -199,24 +203,23 @@ and $32.86$. On CelebA it is matched: the mean difference to the proposed networ
 a standard deviation of $33.24$, and the sign is mixed. Its Inception Score on CIFAR-10, $5.655$
 against $4.711$ and $4.625$, agrees with its FID lead.
 
-Read together with the previous section, the two sets of measurements describe an awkward situation.
-The restoration measures are stable to a thousandth but cannot separate the proposed and plain
-networks, and where they do lean they contradict one another. FID separates them decisively on
-CelebA but varies by tens of points between seeds. \textbf{The measurement that is reliable is
-uninformative, and the measurement that is informative is noisy.} The reason is the same in both
-cases: the training objective and the restoration diagnostics both average the noise-prediction
-error over timesteps, whereas generation composes a thousand such predictions in sequence, and
-errors that are small on average but systematic at particular timesteps compound through that
-composition. A network can be an excellent denoiser and a poor generator, and only a
-distribution-level measure sees it.
+Read together with the previous section, the two sets of measurements are in tension. The
+restoration measures are stable to a thousandth but cannot separate the proposed and plain networks,
+and where they do lean they contradict one another. FID separates them decisively on CelebA but
+varies by tens of points between seeds. The measurement that is reliable is uninformative, and the
+measurement that is informative is noisy. The reason is the same in both cases: the training
+objective and the restoration diagnostics both average the noise-prediction error over timesteps,
+whereas generation composes a thousand such predictions in sequence, and errors that are small on
+average but systematic at particular timesteps compound through that composition. A network can be
+an excellent denoiser and a poor generator, and only a distribution-level measure sees it.
 
-The difference between the two datasets invites an explanation in terms of depth. At
-$32 \times 32$ the proposed network has two resolution stages and the shortcut changes nothing; at
-$64 \times 64$ it has three and the shortcut is worth sixty FID points. Residual connections exist
-to make deeper networks optimisable, so a benefit that appears only in the deeper configuration is
-what the original argument would predict. The present experiment cannot establish this, because
-depth and resolution vary together; separating them would require the two-stage and three-stage
-networks to be trained on the same images.
+The difference between the two datasets invites an explanation in terms of depth. At $32 \times 32$
+the proposed network has two resolution stages and the shortcut changes nothing; at $64 \times 64$
+it has three and the shortcut is worth sixty FID points. Residual connections exist to make deeper
+networks optimisable, so a benefit that appears only in the deeper configuration is what the
+original argument would predict. The present experiment cannot establish this, because depth and
+resolution vary together; separating them would require the two-stage and three-stage networks to be
+trained on the same images.
 
 \section{Memorisation}
 
@@ -289,8 +292,9 @@ count nor the arithmetic performed.
 
 The reference network costs $2.4$ times as much per epoch on CIFAR-10 and $2.2$ times as much on
 CelebA, despite having fewer parameters than either competitor. The cost is incurred by depth and by
-attention rather than by weight count. Its advantage on CIFAR-10 is decisive and worth the price;
-on CelebA it is matched by the proposed network at less than half the training cost.
+attention rather than by weight count. Its advantage on CIFAR-10 is decisive and justifies the
+additional cost; on CelebA it is matched by the proposed network at less than half the training
+cost.
 
 \section{Generated Samples}
 
@@ -370,7 +374,7 @@ On CIFAR-10 all three models produce coherent local texture and plausible figure
 and some samples suggest recognisable categories such as animals or vehicles, but none is
 identifiable with confidence. This is the expected outcome for networks of two and a half million
 parameters trained for eleven thousand optimisation steps; the published CIFAR-10 configuration is
-roughly fourteen times larger and is trained for two orders of magnitude longer.
+roughly fourteen times larger and is trained for nearly seventy times as many steps.
 
 The CelebA panels are where the FID result becomes visible. All three models generate face-like
 images with correct global arrangement, but the plain network's faces are noticeably less coherent,
@@ -383,13 +387,21 @@ reverse process.
 \subsection{Why the Samples Are Indistinct}
 \label{sec:indistinct}
 
-The samples above are recognisable in kind but not in particular, and it is worth separating the two reasons for that, because only one of them is a property of the method.
+The samples above are recognisable in kind but not in particular, and it is worth separating the two
+reasons for that, because only one of them is a property of the method.
 
-The first is simply the scale of the experiment. Table~\ref{tab:budget} sets the configuration used here beside the one published with the original DDPM \parencite{arXiv:2006.11239}. The networks trained for this work are roughly fourteen times smaller and receive sixty-eight times fewer optimisation steps, which places the total training computation about three orders of magnitude below the reference. The resulting Fr\'echet Inception Distance is about twenty times worse. Nothing in that comparison is surprising, and it is the reason Section~\ref{sec:distribution} treats only the relative ordering of the three networks as meaningful.
+The first is simply the scale of the experiment. Table~\ref{tab:budget} sets the configuration used
+here beside the one published with the original DDPM \parencite{arXiv:2006.11239}. The networks
+trained for this work are roughly fourteen times smaller and receive sixty-eight times fewer
+optimisation steps, which places the total training computation about three orders of magnitude
+below the reference. The resulting Fr\'echet Inception Distance is about twenty times worse. Nothing
+in that comparison is surprising, and it is the reason Section~\ref{sec:distribution} treats only
+the relative ordering of the three networks as meaningful.
 
 \begin{table}[htbp]
     \centering
-    \caption{Training budget compared with the published CIFAR-10 configuration. The difference in computation is approximately three orders of magnitude.}
+    \caption{Training budget compared with the published CIFAR-10 configuration. The difference in
+    computation is approximately three orders of magnitude.}
     \label{tab:budget}
     \begin{tabular}{lrrr}
         \toprule
@@ -403,9 +415,21 @@ The first is simply the scale of the experiment. Table~\ref{tab:budget} sets the
     \end{tabular}
 \end{table}
 
-The second reason explains why the failure takes the particular form of indistinctness rather than, say, visible artefacts. The training objective is a squared error, and when a network is uncertain the prediction that minimises squared error is the average of the outcomes it considers possible. Averaging over several plausible completions of a region produces a smooth one. This is the same mechanism that gives Variational Autoencoders their characteristic softness, discussed in Section~2.2.1, and it is not specific to either architecture tested here.
+The second reason explains why the failure takes the particular form of indistinctness rather than,
+say, visible artefacts. The training objective is a squared error, and when a network is uncertain
+the prediction that minimises squared error is the average of the outcomes it considers possible.
+Averaging over several plausible completions of a region produces a smooth one. This is the same
+mechanism that gives Variational Autoencoders their characteristic softness, discussed in
+Section~\ref{sec:vae}, and it is not specific to either architecture tested here.
 
-What distinguishes a diffusion model is that it does not have to commit to a whole image at once. Dividing the task into a thousand steps keeps the uncertainty at each step small, and the noise added back at every step, in the term $\sigma_t z$ of the reverse process, pushes the trajectory towards one specific outcome instead of the average of many. Both mitigations depend on each step being accurate. An undertrained network makes a small error at every one of the thousand steps, the averaging reasserts itself, and the softness returns. The indistinctness observed here is therefore a symptom of the training budget rather than of the formulation, and the remedies set out in the Conclusions are addressed to that budget.
+What distinguishes a diffusion model is that it does not have to commit to a whole image at once.
+Dividing the task into a thousand steps keeps the uncertainty at each step small, and the noise
+added back at every step, in the term $\sigma_t z$ of the reverse process, pushes the trajectory
+towards one specific outcome instead of the average of many. Both mitigations depend on each step
+being accurate. An undertrained network makes a small error at every one of the thousand steps, the
+averaging reasserts itself, and the softness returns. The indistinctness observed here is therefore
+a symptom of the training budget rather than of the formulation, and the remedies set out in the
+Conclusions are addressed to that budget.
 
 Figure~\ref{fig:trajectory} shows the reverse trajectory of the proposed network on both datasets,
 sampled every twenty steps. Structure emerges late: the first two thirds of the trajectory refine
