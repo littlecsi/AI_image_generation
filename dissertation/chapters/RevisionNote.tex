@@ -1,0 +1,21 @@
+This thesis was submitted in 2024 in fulfilment of the requirements for the degree of Bachelor of
+Engineering. The present document is a revision prepared by the author in 2026, on the author's own
+initiative and outside any programme of assessment. The academic record of the original submission
+is unaffected by it.
+
+The revision was undertaken because the original implementation contained defects that invalidated
+part of what was reported. The reverse process omitted the clipping of the implied estimate of
+$x_0$, which is described in Section~\ref{sec:reverse-note}, and the structural similarity figures
+had been computed from images whose negative pixel values were discarded on saving. Correcting both
+required the experiment to be run again from the beginning.
+
+The opportunity was taken to strengthen the experimental design rather than merely to repeat it. The
+comparison now includes a control network that differs from the proposed one only in the presence of
+the identity shortcut, so that residual learning is isolated as the single variable; it adds the
+reference architecture of Ho et al.\ at a matched parameter budget; it is carried out on a second
+dataset at twice the resolution; and every configuration is trained under three random seeds, which
+established that the most striking result of the original single-run study was noise. The evaluation
+was extended from training loss and structural similarity alone to include peak signal-to-noise
+ratio, the Fr\'echet Inception Distance, the Inception Score and a nearest-neighbour check against
+the training set. Chapters~\ref{ch1} to~\ref{ch3} and the Conclusions were rewritten around the
+results these changes produced.
