@@ -1,0 +1,42 @@
+Denoising Diffusion Probabilistic Models (DDPMs) have rapidly become one of the leading families of
+generative models, offering a stability of training that Generative Adversarial Networks (GANs) have
+historically struggled to achieve. Within a DDPM the diffusion process is fixed and the only learned
+component is the network that predicts the noise added at each step, so the choice of that network
+governs the quality of the images produced. This thesis asks whether combining residual learning
+with the UNet backbone conventionally used for that purpose yields a measurable improvement.
+
+A residual UNet (ResUNet) was implemented in PyTorch, in which every encoder and decoder stage is
+constructed from residual blocks rather than plain convolutional stacks, and trained directly on the
+standard DDPM objective. It is assessed against two baselines under matched conditions. The first
+removes the identity shortcut from each block and is otherwise identical, so that the two networks
+have exactly the same parameter count and the comparison isolates residual learning as the single
+variable. The second is the denoising architecture of the original DDPM, with four resolution stages
+and self-attention, reduced in width so that its parameter count agrees with the proposed network to
+within ten per cent. All three were trained on CIFAR-10 at $32 \times 32$ and on CelebA at
+$64 \times 64$, sharing the diffusion schedule, the optimiser, the number of epochs and the random
+seed, and sampling from the same initial noise.
+
+The three networks were compared on restoration accuracy, measured by structural similarity and
+peak signal-to-noise ratio against held-out images at six noise levels; on distribution-level
+quality, measured by the Fr\'echet Inception Distance and the Inception Score over two thousand
+generated samples; and on a nearest-neighbour check against the training set that found no evidence
+of memorisation on either dataset.
+
+Every configuration was trained under three random seeds. The residual shortcut lowers the
+first-epoch loss in all six paired runs, by five to eleven per cent on average, but that advantage
+disappears by the fifth epoch, and at convergence the restoration measures cannot separate the two
+networks: the training loss leans towards the plain variant and structural similarity towards the
+proposed one, both by less than half of one per cent. Generative quality separates them, on the
+deeper configuration only. On CelebA the proposed network leads in every seed, by a mean of $63.31$
+FID against a seed-to-seed standard deviation of about $23$; on CIFAR-10 the paired difference is
+$-3.46 \pm 13.78$ with the sign changing between seeds. Two networks that denoise equally well are
+therefore shown to generate images of very different quality, a discrepancy no restoration measure
+anticipated. The reference architecture remains the strongest overall, leading every restoration
+measure and CIFAR-10 FID at roughly $2.3$ times the training cost, and is matched only on CelebA
+FID by the proposed network.
+
+The hypothesis accordingly receives partial and conditional support: residual learning does not
+improve generated image quality at two resolution stages, where it makes no detectable difference,
+but at three stages it leads in every seed by a margin larger than the observed spread. Negative Log-Likelihood was excluded on the
+grounds that this implementation fixes the reverse-process variances rather than learning them, and
+the comparison against Variational Autoencoder and GAN baselines was not carried out.

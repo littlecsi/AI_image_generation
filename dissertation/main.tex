@@ -1,0 +1,125 @@
+% AI Image Generation using Diffusion Model
+% arXiv:1706.03762 계열의 논문 판면을 따르는 학위논문 본문.
+% 기존 Imperial EEE 템플릿(ic_eee_thesis.cls)은 legacy/ 로 옮겨 두었음.
+% 컴파일: latexmk -lualatex main.tex
+
+\documentclass[11pt,a4paper,oneside]{report}
+
+\usepackage{amsmath}
+
+% 폰트: 참조 논문과 같은 Times 계열. LuaLaTeX 이므로 OpenType 로 직접 지정
+\usepackage{fontspec}
+\setmainfont{TeX Gyre Termes}
+\usepackage{unicode-math}
+\setmathfont{TeX Gyre Termes Math}
+
+% 판면: 본문 폭을 논문처럼 좁게 잡아 한 줄 길이를 줄임
+\usepackage[a4paper,left=3.2cm,right=3.2cm,top=3cm,bottom=3cm]{geometry}
+
+\usepackage{graphicx}
+\graphicspath{{imgs/}}
+\usepackage{setspace}
+\usepackage[font=small,labelfont=bf]{caption}
+\usepackage{booktabs}
+\usepackage{titlesec}
+\usepackage[hidelinks]{hyperref}
+
+% 서지: 번호식 IEEE 스타일 (참조 논문과 동일한 형태)
+\usepackage[style=ieee,backend=biber]{biblatex}
+\addbibresource{references.bib}
+
+% chapters/ 안의 파일을 \input{Chapter1.tex} 로 부르기 위한 탐색 경로
+\makeatletter
+\def\input@path{{chapters/}}
+\makeatother
+
+% 구 템플릿이 쓰던 minitoc 명령. OrigSta_Copyright.tex 를 켜도 깨지지 않도록 무해화
+\providecommand{\mtcaddchapter}{}
+
+% 표제 계층: 장식 없이 굵게만. 원 템플릿의 큰 장 제목 블록을 걷어냄
+\titleformat{\chapter}[hang]{\normalfont\LARGE\bfseries}{\thechapter}{0.6em}{}
+\titlespacing*{\chapter}{0pt}{0pt}{18pt}
+\titleformat{\section}{\normalfont\large\bfseries}{\thesection}{0.6em}{}
+\titleformat{\subsection}{\normalfont\normalsize\bfseries}{\thesubsection}{0.6em}{}
+
+\DeclareMathOperator{\diag}{diag}
+\DeclareMathOperator{\vect}{vec}
+
+\begin{document}
+\singlespacing
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% 표지
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{titlepage}
+\centering
+\vspace*{2.5cm}
+
+{\LARGE\bfseries AI Image Generation using Diffusion Model\par}
+
+\vspace{2.5cm}
+{\large Lian Choi\par}
+\vspace{0.3cm}
+{\normalsize CID: 01704485\par}
+
+\vspace{2cm}
+{\normalsize Supervised by\par}
+\vspace{0.3cm}
+{\large Dr C. Ling\par}
+
+\vspace{1.5cm}
+{\normalsize Second Marker\par}
+\vspace{0.3cm}
+% 실제 second marker 이름으로 교체할 것. 원 템플릿에서도 비어 있던 항목
+{\large Prof. A. Another\par}
+
+\vspace{2.5cm}
+{\normalsize A Thesis submitted in fulfilment of the requirements for the degree of\par}
+\vspace{0.3cm}
+{\normalsize\bfseries Bachelor of Engineering in Electronic and Information Engineering\par}
+
+\vspace{2cm}
+{\normalsize Department of Electrical and Electronic Engineering\par}
+{\normalsize Imperial College London\par}
+\vspace{0.5cm}
+{\normalsize 2024\par}
+
+\vfill
+\end{titlepage}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% 전면부: 초록과 목차 (로마자 쪽번호)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\pagenumbering{roman}
+\pagestyle{plain}
+
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+\input{Abstract.tex}
+
+% 제출 규정상 필요하면 아래 주석을 해제할 것 (원본 템플릿에서도 꺼져 있었음)
+% \input{OrigSta_Copyright.tex}
+
+\tableofcontents
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% 본문
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\clearpage
+\pagenumbering{arabic}
+
+\input{Chapter1.tex}
+\input{Chapter2.tex}
+\input{Chapter3.tex}
+
+\chapter*{Conclusions}
+\addcontentsline{toc}{chapter}{Conclusions}
+\input{Conclusions.tex}
+
+% 부록: \appendix 를 켜야 "Appendix A" 로 번호가 매겨짐
+\appendix
+\input{AppendixA.tex}
+
+\printbibliography[title={References},heading=bibintoc]
+
+\end{document}

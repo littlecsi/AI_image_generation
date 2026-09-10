@@ -1,0 +1,245 @@
+\chapter{Appendices}
+\label{appendix}
+
+\section{Per-Epoch Training Loss}
+\label{sec:loss-full}
+
+Table~\ref{tab:loss} in Chapter~\ref{ch3} reports the training loss at five checkpoints.
+Table~\ref{tab:loss-full} gives the complete record for the six runs under seed 0, so that the
+shape of the curves discussed in Section~3.2 can be inspected directly. The other two seeds follow
+the same trajectory and are not reproduced; their final values appear in Table~\ref{tab:fid} and
+the underlying record is available in the accompanying repository.
+
+The epoch at which one network overtakes another is not itself stable across seeds, and
+Table~\ref{tab:crossover} records where it falls. The proposed network is overtaken by its
+shortcut-free variant somewhere between the third and the sixth epoch on both datasets, which is
+consistent with the early advantage being real but short-lived. The reference network is more
+erratic: on CIFAR-10 it takes the lead as early as the second epoch under one seed and as late as
+the twelfth under another, although it finishes ahead in every case. These figures are a further
+reminder that quantities read from a single run should not be quoted to a precision the experiment
+does not support.
+
+\begin{table}[htbp]
+    \centering
+    \caption{The epoch at which one network first attains a lower training loss than another.}
+    \label{tab:crossover}
+    \small
+    \begin{tabular}{llccc}
+        \toprule
+        Comparison & Dataset & Seed 0 & Seed 1 & Seed 2 \\
+        \midrule
+        plain overtakes ResUNet & CIFAR-10 & 4 & 4 & 3 \\
+        plain overtakes ResUNet & CelebA   & 5 & 3 & 6 \\
+        \midrule
+        DDPM UNet leads both    & CIFAR-10 & 11 & 2 & 12 \\
+        DDPM UNet leads both    & CelebA   & 2 & 1 & 2 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+    \centering
+    \caption{Epoch-averaged noise-prediction loss for the six runs under seed 0. Lower is better.}
+    \label{tab:loss-full}
+    \footnotesize
+    \begin{tabular}{ccccccc}
+        \toprule
+        & \multicolumn{3}{c}{CIFAR-10} & \multicolumn{3}{c}{CelebA} \\
+        \cmidrule(lr){2-4} \cmidrule(lr){5-7}
+        Epoch & ResUNet & plain & DDPM UNet & ResUNet & plain & DDPM UNet \\
+        \midrule
+        1 & 0.13775 & 0.14633 & 0.18508 & 0.14205 & 0.16413 & 0.15588 \\
+        2 & 0.08237 & 0.08327 & 0.08805 & 0.06335 & 0.06774 & 0.06071 \\
+        3 & 0.07665 & 0.07676 & 0.07861 & 0.05415 & 0.05513 & 0.04980 \\
+        4 & 0.07322 & 0.07265 & 0.07399 & 0.04957 & 0.04963 & 0.04503 \\
+        5 & 0.07111 & 0.07033 & 0.07135 & 0.04735 & 0.04705 & 0.04316 \\
+        6 & 0.07017 & 0.06936 & 0.07014 & 0.04535 & 0.04496 & 0.04136 \\
+        7 & 0.06790 & 0.06719 & 0.06799 & 0.04430 & 0.04379 & 0.04057 \\
+        8 & 0.06705 & 0.06637 & 0.06672 & 0.04283 & 0.04234 & 0.03927 \\
+        9 & 0.06655 & 0.06582 & 0.06591 & 0.04207 & 0.04159 & 0.03863 \\
+        10 & 0.06619 & 0.06555 & 0.06593 & 0.04110 & 0.04055 & 0.03779 \\
+        11 & 0.06570 & 0.06511 & 0.06491 & 0.04094 & 0.04044 & 0.03761 \\
+        12 & 0.06517 & 0.06455 & 0.06448 & 0.03977 & 0.03924 & 0.03665 \\
+        13 & 0.06458 & 0.06409 & 0.06386 & 0.03994 & 0.03948 & 0.03699 \\
+        14 & 0.06424 & 0.06365 & 0.06360 & 0.03984 & 0.03935 & 0.03677 \\
+        15 & 0.06424 & 0.06373 & 0.06322 & 0.03915 & 0.03866 & 0.03639 \\
+        16 & 0.06352 & 0.06308 & 0.06281 & 0.03938 & 0.03891 & 0.03647 \\
+        17 & 0.06315 & 0.06275 & 0.06206 & 0.03904 & 0.03855 & 0.03610 \\
+        18 & 0.06305 & 0.06264 & 0.06202 & 0.03822 & 0.03775 & 0.03549 \\
+        19 & 0.06278 & 0.06236 & 0.06196 & 0.03821 & 0.03773 & 0.03546 \\
+        20 & 0.06249 & 0.06212 & 0.06165 & 0.03844 & 0.03799 & 0.03573 \\
+        21 & 0.06250 & 0.06213 & 0.06158 & 0.03818 & 0.03772 & 0.03561 \\
+        22 & 0.06265 & 0.06235 & 0.06160 & 0.03771 & 0.03727 & 0.03505 \\
+        23 & 0.06170 & 0.06142 & 0.06062 & 0.03749 & 0.03712 & 0.03502 \\
+        24 & 0.06204 & 0.06165 & 0.06080 & 0.03741 & 0.03700 & 0.03489 \\
+        25 & 0.06218 & 0.06187 & 0.06091 & 0.03775 & 0.03726 & 0.03519 \\
+        26 & 0.06132 & 0.06108 & 0.06040 & 0.03740 & 0.03704 & 0.03495 \\
+        27 & 0.06156 & 0.06128 & 0.06075 & 0.03700 & 0.03659 & 0.03452 \\
+        28 & 0.06190 & 0.06161 & 0.06071 & 0.03668 & 0.03626 & 0.03422 \\
+        29 & 0.06165 & 0.06140 & 0.06059 & 0.03741 & 0.03700 & 0.03496 \\
+        30 & 0.06108 & 0.06084 & 0.05967 & 0.03716 & 0.03679 & 0.03476 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{Network Specifications}
+\label{sec:specs}
+
+The comparison in this work rests on the claim that the proposed and plain networks are identical in
+size and that the reference network is comparable. Tables~\ref{tab:spec-resunet} and
+\ref{tab:spec-ddpm} give the breakdown from which that claim can be checked.
+
+The proposed and shortcut-free networks share every table entry, because an identity shortcut
+introduces no parameters. Only the presence of the addition $x + h$ at the end of each block
+differs, which is why the two rows of Table~\ref{tab:params} are equal to the digit.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Residual UNet, by stage. The figures apply unchanged to the shortcut-free variant.
+    Each decoder concatenates the encoder features of the corresponding stage, so its block operates
+    on the sum of the upsampled and skipped channel counts.}
+    \label{tab:spec-resunet}
+    \small
+    \begin{tabular}{lccr}
+        \toprule
+        Stage & Channels & Resolution & Parameters \\
+        \midrule
+        \multicolumn{4}{l}{\emph{CIFAR-10, two resolution stages}} \\
+        Timestep embedding MLP & --- & --- & 33\,024 \\
+        Encoder 1 & $3 \rightarrow 64$ & $32 \times 32$ & 84\,160 \\
+        Encoder 2 & $64 \rightarrow 128$ & $16 \times 16$ & 386\,048 \\
+        Bridge & $128$ & $8 \times 8$ & 312\,192 \\
+        Decoder 2 & $\rightarrow 256$ & $16 \times 16$ & 1\,279\,872 \\
+        Decoder 1 & $\rightarrow 128$ & $32 \times 32$ & 377\,792 \\
+        Final $1 \times 1$ convolution & $\rightarrow 3$ & $32 \times 32$ & 387 \\
+        \emph{Total} & & & \emph{2\,473\,475} \\
+        \midrule
+        \multicolumn{4}{l}{\emph{CelebA, three resolution stages}} \\
+        Timestep embedding MLP & --- & --- & 33\,024 \\
+        Encoder 1 & $3 \rightarrow 32$ & $64 \times 64$ & 23\,648 \\
+        Encoder 2 & $32 \rightarrow 64$ & $32 \times 32$ & 100\,864 \\
+        Encoder 3 & $64 \rightarrow 128$ & $16 \times 16$ & 386\,048 \\
+        Bridge & $128$ & $8 \times 8$ & 312\,192 \\
+        Decoder 3 & $\rightarrow 256$ & $16 \times 16$ & 1\,279\,872 \\
+        Decoder 2 & $\rightarrow 128$ & $32 \times 32$ & 377\,792 \\
+        Decoder 1 & $\rightarrow 64$ & $64 \times 64$ & 98\,784 \\
+        Final $1 \times 1$ convolution & $\rightarrow 3$ & $64 \times 64$ & 195 \\
+        \emph{Total} & & & \emph{2\,612\,419} \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Two features of Table~\ref{tab:spec-resunet} are worth noting. The first is that the coarsest
+decoder dominates the budget, holding $52\%$ of the parameters on CIFAR-10 and $49\%$ on CelebA,
+because concatenation doubles the channel count before the block that follows it. The second is that
+adding a third resolution stage for CelebA increases the total by only $5.6\%$: the channel widths
+were narrowed from $(64, 128)$ to $(32, 64, 128)$ so that the deeper network would remain comparable
+in size to the shallower one, which is what permits the two datasets to be discussed on the same
+footing.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Reference DDPM UNet, by functional group. The same configuration is used for both
+    datasets, since none of its parameter counts depends on the input resolution.}
+    \label{tab:spec-ddpm}
+    \small
+    \begin{tabular}{lr}
+        \toprule
+        Group & Parameters \\
+        \midrule
+        Timestep embedding MLP & 131\,712 \\
+        Input convolution & 896 \\
+        Downward residual blocks (8) & 523\,328 \\
+        Downward attention & 33\,536 \\
+        Downsampling convolutions (3) & 83\,104 \\
+        Middle block (residual, attention, residual) & 181\,504 \\
+        Upward residual blocks (12) & 1\,240\,640 \\
+        Upward attention & 50\,304 \\
+        Upsampling convolutions (3) & 110\,784 \\
+        Output normalisation and convolution & 931 \\
+        \midrule
+        \emph{Total} & \emph{2\,356\,739} \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+The reference network reaches a similar total by a different distribution. Its upward path carries
+$53\%$ of the parameters, because a skip connection is taken from every residual block rather than
+once per resolution stage, so each of the twelve upward blocks receives a concatenated input. The
+attention layers account for only $3.6\%$ of the weights while contributing a large share of the
+runtime, which is why this network costs roughly $2.3$ times as much per epoch despite being the
+smallest of the three.
+
+\section{Memorisation Check: Remaining Configurations}
+\label{sec:memo-full}
+
+Figure~\ref{fig:memorisation} in Chapter~\ref{ch3} shows the closest generated and training pairs
+for the proposed network on CelebA. The remaining five configurations are given here, and support
+the same conclusion: in no case is a generated sample a reproduction of a training image.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{memo_cifar10_resunet.png}\\[2mm]
+    \includegraphics[width=\linewidth]{memo_cifar10_plain.png}\\[2mm]
+    \includegraphics[width=\linewidth]{memo_cifar10_ddpm.png}
+    \caption{CIFAR-10: the eight samples closest to the training set (top row of each pair) with
+    their nearest training image (bottom row), for the proposed, shortcut-free and reference
+    networks in turn.}
+    \label{fig:memo-cifar}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{memo_celeba_plain.png}\\[3mm]
+    \includegraphics[width=\linewidth]{memo_celeba_ddpm.png}
+    \caption{CelebA: the shortcut-free and reference networks. No pair depicts the same person.}
+    \label{fig:memo-celeba}
+\end{figure}
+
+\section{Computing Environment}
+\label{sec:environment}
+
+All eighteen runs were carried out on the machine described in Table~\ref{tab:environment}. Six
+configurations trained for thirty epochs under each of three seeds amount to approximately five
+hours of training, and the evaluation adds a further two and a half, dominated by drawing the two
+thousand samples per model required for the Fr\'echet Inception Distance. The complete experiment
+therefore occupies about seven and a half hours on a single consumer graphics card, which is what
+makes the repetition recommended in the Conclusions practical rather than aspirational.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Hardware and software used for every run reported in this work.}
+    \label{tab:environment}
+    \small
+    \begin{tabular}{ll}
+        \toprule
+        Component & Version \\
+        \midrule
+        GPU & NVIDIA GeForce RTX 4070, 12\,GB \\
+        Driver & 591.86 \\
+        Operating system & Windows 11 \\
+        Python & 3.12.10 \\
+        PyTorch & 2.14.0+cu130 \\
+        torchvision & 0.29.0+cu130 \\
+        CUDA runtime & 13.0 \\
+        cuDNN & 9.24.0 \\
+        torchmetrics & 1.9.0 \\
+        torch-fidelity & 0.4.0 \\
+        scikit-image & 0.26.0 \\
+        NumPy & 2.5.2 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Training used bfloat16 mixed precision with the channels-last memory format, and TF32 matrix
+multiplication with the cuDNN autotuner enabled. These settings affect only the arithmetic used to
+evaluate a fixed model, not the model itself, and were applied identically to all six runs.
+
+The implementation is a single Jupyter notebook containing the network definitions, the diffusion
+process, the training loop and every evaluation reported here. It includes a self-check routine that
+verifies the noise schedule is monotone and converges to the standard normal distribution, that the
+closed-form forward process is consistent, that the network output depends on the timestep, that the
+sampling path executes, and that the parameter budgets of the three architectures satisfy the
+constraints stated in Section~\ref{sec:simulation}. Datasets are decoded once into unsigned
+eight-bit tensors and cached, so that only the first execution pays the preprocessing cost, and
+training is skipped for any architecture whose checkpoint already records the full number of epochs.

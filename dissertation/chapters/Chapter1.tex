@@ -1,0 +1,69 @@
+\chapter{Project Specification}
+\label{ch1}
+
+\section{Introduction}
+
+This research project is centered on examining the capabilities of Denoising Diffusion Probabilistic Model (DDPM) in the field of image generation. The focus of this study is the generation of natural images, evaluated on two datasets of differing resolution. The first is CIFAR-10, the standard benchmark against which diffusion models are reported, comprising $32 \times 32$ RGB images drawn from ten object classes; retaining it allows the results obtained here to be placed alongside the published literature. The second is CelebA, a large-scale collection of aligned face photographs, from which a centre crop is taken and resized to $64 \times 64$. The higher resolution is included because architectural differences between denoising networks are difficult to observe at $32 \times 32$, where the spatial extent is exhausted after only two downsampling stages; at $64 \times 64$ a third stage becomes available and the contribution of network depth and of the skip connections is visible both in the metrics and in the generated samples. So that the two settings remain comparable in training cost, a 50,000-image subset of CelebA is used, matching the size of the CIFAR-10 training split. The project aims to not only develop and train a DDPM model but also to enrich the research with comprehensive analytical work, simulations, and the development of dedicated software tools. This approach intends to merge theoretical insights with practical applications, contributing significantly to the understanding and advancement of generative models in digital image processing.
+
+This project sets the generative capability of diffusion models against the established alternatives in the field, Generative Adversarial Networks (GANs) and Variational Autoencoders (VAEs), which Chapter~\ref{ch2} reviews. It also explores an alternative approach by combining residual learning with the UNet backbone that is conventionally adopted for the denoising network, giving a residual UNet (ResUNet) in which each encoder and decoder stage is constructed from residual blocks rather than plain convolutional stacks. This investigation into different architectural frameworks is expected to yield insightful results regarding efficiency, effectiveness, and the quality of image generation, thus contributing to the broader discourse on machine learning architectures in generative applications.
+
+\subsection{Software}
+
+This project involves the implementation of a Denoising Diffusion Probabilistic Model (DDPM) with an emphasis on the denoising process, for which a residual UNet (ResUNet) serves as the noise-prediction network. Training follows the standard DDPM objective: a timestep is drawn uniformly for each example in a batch, the corresponding noisy image is formed in closed form from the cumulative noise schedule, and the network is optimised to predict the Gaussian noise that was added. The quantity minimised is therefore a noise-prediction error, not a reconstruction error. A key component of the framework is the data handling routine, which caches CIFAR-10 and CelebA as tensors at the required resolution so that an identical training loop applies to either dataset without modification. Dedicated classes are provided for training, sampling and evaluation, and the diffusion process is implemented separately from the denoising network so that the architecture under test can be exchanged without altering the generative model itself. This separation is what makes the controlled comparison of Section~\ref{sec:simulation} possible.
+
+\subsection{Simulation}
+\label{sec:simulation}
+
+The experimental programme holds the diffusion framework fixed and varies only the denoising network, so that any difference in performance can be attributed to the architecture rather than to the generative model. Three networks are trained on each of the two datasets, giving six runs in total.
+
+\begin{itemize}
+    \item \textbf{ResUNet} is the proposed network, in which every encoder and decoder stage is built from residual blocks.
+    \item \textbf{Plain UNet} is identical in every respect except that the identity shortcut is removed from each block. A shortcut adds no parameters, so the two networks have exactly the same parameter count and computational cost; this comparison therefore isolates residual learning as the single variable.
+    \item \textbf{DDPM UNet} is the denoising architecture of Ho et al., with four resolution stages, self-attention at $16 \times 16$ and a skip connection taken from every residual block. Its base channel width is reduced so that its parameter count falls within a few per cent of the proposed network. Without that adjustment the published configuration would be an order of magnitude larger, and any difference in quality would reflect capacity rather than design.
+\end{itemize}
+
+All six runs share the number of diffusion steps, the noise schedule, the training objective, the optimiser and its learning rate, the number of epochs, the data augmentation and the random seed; sampling for every model begins from the same initial noise. Evaluation is carried out on three levels. The restoration diagnostics are computed over a thousand held-out test images at six separate noise levels; the distribution-level metrics require a far larger sample and are computed from two thousand images drawn through the complete reverse process for each model; and the memorisation check compares every generated sample against the entire training set. Analysing the models under these matched conditions is what allows patterns and variances in the diffusion process to be attributed to the architecture, and provides the basis on which the proposed network is judged.
+
+\subsection{Analytical Work}
+
+The analysis reported in Chapter~\ref{ch3} follows the design set out above. Every configuration is trained under identical conditions and evaluated by the same procedure, so that the measurements can be compared directly; the decisions taken during development, and the corrections made when a measurement proved to be reporting something other than what was intended, are recorded alongside the results rather than omitted from them. Two such corrections proved substantive enough to affect the conclusions and are documented in place: the numerical instability of the reverse process, and the inability of the restoration measures to anticipate generative quality.
+
+No single number captures the performance of a generative model, and the measurements reported here fall into three groups that answer different questions. The first group asks how faithfully a corrupted image is restored, and comprises the Structural Similarity Index Measure (SSIM) and the Peak Signal-to-Noise Ratio (PSNR). The second asks how closely the distribution of generated images resembles the distribution of real ones, and comprises the Fréchet Inception Distance (FID) and the Inception Score (IS). The third is not a quality measure at all but a validity check: a nearest-neighbour comparison against the training set, which establishes that the model is generating rather than reproducing.
+
+\begin{itemize}
+    \item \textbf{Structural Similarity Index Measure} compares two images in terms of luminance,
+    contrast and structural information. It requires a matched reference image, and is therefore
+    applied to the reconstruction of held-out test images rather than to unconditional samples: a
+    test image is corrupted to a chosen timestep and recovered in a single step, and the recovered
+    image is compared with the original. A higher value indicates a more faithful restoration.
+
+    \item \textbf{Peak Signal-to-Noise Ratio} is computed on the same pairs and reports the mean
+    squared error on a logarithmic scale, in decibels. It is reported alongside SSIM because the
+    two quantify different things: SSIM responds to structural agreement, PSNR to pixel-wise
+    error. Where the two disagree, the disagreement is itself informative, since it indicates that
+    one network is more accurate in absolute terms while the other preserves structure better.
+
+    \item \textbf{Fr\'echet Inception Distance} quantifies the distance between the feature
+    vectors of real images and generated images calculated by a pre-trained Inception network.
+    Unlike the two measures above it needs no reference image, so it applies to samples drawn from
+    noise and is therefore the primary measure of generative quality in this work. A lower FID
+    indicates a closer match between the generated and real distributions.
+
+    \item \textbf{Inception Score} evaluates the clarity and diversity of generated images from
+    the same samples. A higher IS suggests that the model produces distinct and confidently
+    classified images, although the measure is known to reward confident classification even when
+    the images are not realistic, and it is therefore read alongside FID rather than on its own.
+
+    \item \textbf{Nearest-neighbour distance} locates, for every generated sample, the closest
+    image in the training set under a pixel-space $L_2$ metric. A distance on its own cannot be
+    interpreted, so the same measurement is taken for held-out real images that the model never
+    saw; if the generated samples are no closer to the training set than genuine unseen images
+    are, there is no evidence that the model is reproducing its training data.
+\end{itemize}
+
+Negative Log-Likelihood was considered and deliberately excluded. Obtaining it for a diffusion model requires evaluating the full variational bound rather than the simplified training objective, and the bound is dominated by the reverse-process variances. The implementation used here follows the original formulation in fixing those variances to the posterior values rather than learning them, so the resulting likelihood would report a property of that fixed choice more than a property of the denoising network under test. Reporting it would add a number without adding evidence about the question this project asks.
+
+Taken together the three groups support different claims. The restoration measures compare the networks as denoisers, which is what they are trained to be; the distribution measures compare them as generators, which is what they are ultimately for; and the memorisation check establishes that the second claim is meaningful. Reporting all three guards against the failure mode of selecting whichever single metric happens to favour the proposed architecture.
+
+% \section{Notation}
+% \section{Published material}
