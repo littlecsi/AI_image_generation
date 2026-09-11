@@ -39,3 +39,6 @@ model/*
 model/extension/*
 !model/extension/extension_study.json
 data/
+
+# Claude Code 로컬 설정 (기기마다 다름)
+.claude/
