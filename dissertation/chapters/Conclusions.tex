@@ -78,7 +78,8 @@ weights themselves but from an exponential moving average of them, which suppres
 of the final iterates and typically improves the Fr\'echet Inception Distance appreciably. No such
 average was maintained here, so the absolute sample quality reported is lower than the same training
 run would otherwise have produced. The omission applies identically to all six runs and so does not
-affect the comparison between them.
+affect the comparison between them. Chapter~\ref{ch4} adds the average and measures its
+contribution.
 
 The memorisation check operates in pixel space and would not detect a reproduction that had been
 shifted or recoloured. Negative Log-Likelihood was excluded on the grounds that this implementation
@@ -107,7 +108,8 @@ variant of Song et al.\ would allow comparable quality from roughly fifty revers
 thousand, which would also reduce the cost of computing the Fr\'echet Inception Distance by a factor
 of twenty and so make the repeated runs recommended above considerably cheaper. None of the three
 alters the architectures under test, so each could be applied to all six configurations without
-disturbing the comparison.
+disturbing the comparison. Chapter~\ref{ch4} carries out the first two on the proposed network,
+together with further changes to training, and reports the deterministic sampler alongside.
 
 Beyond that, learning the reverse-process variances rather than fixing them would make the
 variational bound informative and bring Negative Log-Likelihood within reach, and the Variational

@@ -1,0 +1,589 @@
+\chapter{Extension}
+\label{ch4}
+
+Section~\ref{sec:indistinct} attributed the indistinctness of the samples in Chapter~\ref{ch3} to
+two causes: a training budget roughly three orders of magnitude below the published configuration,
+and the tendency of a squared-error objective to regress towards the mean wherever the network is
+uncertain. The Conclusions proposed remedies for both. This chapter carries them out.
+
+The question changes accordingly. Chapter~\ref{ch3} asked which of three denoising networks
+generates the best images when all are trained identically; this chapter holds the proposed ResUNet
+and the diffusion framework fixed and asks how much of the gap to the published result can be closed
+by changing only how the network is trained and sampled. The changes are applied one at a time as a
+cumulative ladder, so that the contribution of each can be read from the difference between adjacent
+rungs.
+
+% 결과는 주말 72시간 실행(DissertationExtension.ipynb, PRESET = "full")이 끝난 뒤
+% model/extension/extension_study.json 에서 4.7절 표로 옮긴다
+Sections~\ref{sec:ext-motivation} to~\ref{sec:ext-budget} set out the design, the reasoning behind
+every change and the computational budget. Section~\ref{sec:ext-results} states in advance how the
+results are to be read and reports them once the runs are complete.
+
+\section{Motivation}
+\label{sec:ext-motivation}
+
+The two causes identified in Chapter~\ref{ch3} call for different remedies, and it is worth stating
+each precisely.
+
+The first is scale. The networks of Chapter~\ref{ch3} have 2.47 million parameters and were trained
+for 11\,700 optimisation steps, against 35.7 million parameters and 800\,000 steps for the CIFAR-10
+configuration of Ho et al.\ \parencite{arXiv:2006.11239} (Table~\ref{tab:budget}). Of the two
+ratios, the one in steps is the larger by a factor of five, and so is the first target here.
+
+The second is a property of the objective. The network is trained to minimise
+\begin{equation}
+    \mathcal{L}_{\text{simple}} = \mathbb{E}_{t,\,x_0,\,\varepsilon}
+    \left[\left\lVert \varepsilon - \varepsilon_\theta(x_t, t) \right\rVert^2\right],
+    \qquad x_t = \sqrt{\bar\alpha_t}\,x_0 + \sqrt{1-\bar\alpha_t}\,\varepsilon,
+    \label{eq:ext-simple-loss}
+\end{equation}
+and the function that minimises a squared error is the conditional expectation of its target,
+\begin{equation}
+    \varepsilon_\theta^{*}(x_t, t) = \mathbb{E}\left[\varepsilon \mid x_t\right]
+    \quad\Longrightarrow\quad
+    \hat{x}_0 = \frac{x_t - \sqrt{1-\bar\alpha_t}\,\varepsilon_\theta^{*}(x_t, t)}{\sqrt{\bar\alpha_t}}
+    = \mathbb{E}\left[x_0 \mid x_t\right].
+    \label{eq:ext-cond-mean}
+\end{equation}
+Where several clean images are consistent with a noisy one, the ideal network therefore predicts
+their average, and the average of several plausible images is smoother than any of them. The
+reverse process counteracts this by committing to one outcome a little at a time, as argued in
+Section~\ref{sec:indistinct}, but only if each of its thousand predictions is accurate. Anything
+that reduces the error of an individual prediction, including noise in the weights themselves,
+therefore also addresses the second cause.
+
+\section{Experimental Design}
+\label{sec:ext-design}
+
+\subsection{What Is Held Fixed}
+
+Everything that defines the generative model is unchanged from Chapter~\ref{ch3}: $T = 1000$
+diffusion steps under the cosine schedule \parencite{arXiv:2102.09672}, the $\varepsilon$-prediction
+objective, the ancestral sampler with the estimate of $x_0$ clipped at every step
+(Section~\ref{sec:reverse-note}), the ResUNet family of Section~\ref{sec:simulation}, a batch size
+of 128, the Adam optimiser \parencite{arXiv:1412.6980} at a learning rate of $2 \times 10^{-4}$,
+random horizontal flipping, seed~0, and a Fr\'echet Inception Distance computed from 2048 samples.
+Every sample in every rung is drawn from the same initial noise.
+
+\subsection{The Ladder}
+
+Table~\ref{tab:ladder} lists the seven rungs. Each inherits every setting of the one above it and
+changes one thing, so the difference in FID between adjacent rungs,
+\begin{equation}
+    \Delta\mathrm{FID}_i = \mathrm{FID}(E_i) - \mathrm{FID}(E_{i-1}),
+    \label{eq:ext-delta}
+\end{equation}
+is attributable to that change. Two qualifications apply. Three rungs (E2, E5 and E6) change more
+than one setting at once, for reasons given below, and their contributions cannot be divided further.
+And because the ladder is cumulative, each contribution is measured in the presence of all the
+changes that precede it; applied in a different order, a change could contribute a different amount.
+
+\begin{table}[htbp]
+    \centering
+    \caption{The cumulative ladder. Each rung adds the change in its row to all of those above it.
+    Widths are listed for CIFAR-10; the corresponding CelebA widths are $(32, 64, 128)$ and
+    $(96, 192, 256)$.}
+    \label{tab:ladder}
+    \small
+    \begin{tabular}{llrlc}
+        \toprule
+        Rung & Change added & Epochs & Widths & Blocks per stage \\
+        \midrule
+        E0 & none (Chapter~\ref{ch3}, seed 0)            & 30  & $(64, 128)$ & 1 \\
+        E1 & moving average of the weights              & 30  & $(64, 128)$ & 1 \\
+        E2 & warm-up, gradient clipping, dropout        & 30  & $(64, 128)$ & 1 \\
+        E3 & min-SNR loss weighting, $\gamma = 5$         & 30  & $(64, 128)$ & 1 \\
+        E4 & five times the training                      & 150 & $(64, 128)$ & 1 \\
+        E5 & increased capacity                           & 150 & $(128, 256, 256)$ & 2 \\
+        E6 & long training, EMA decay 0.9999              & 2000\textsuperscript{a} &
+        $(128, 256, 256)$ & 2 \\
+        \bottomrule
+        \multicolumn{5}{l}{\footnotesize \textsuperscript{a} 700 on CelebA; see
+        Section~\ref{sec:ext-long}.}
+    \end{tabular}
+\end{table}
+
+The complete ladder is run on CIFAR-10, which is where the contribution of each change is isolated.
+On CelebA only E0, E5 and E6 are run. The purpose there is to establish whether the overall effect
+carries over to a second dataset at twice the resolution, and the difference between the first rung
+and the last is sufficient for that.
+
+\subsection{Validation of the Starting Point}
+
+E0 repeats the seed-0 ResUNet run of Chapter~\ref{ch3} exactly, and serves as a check on the new
+pipeline: if it did not reproduce the earlier result, no other row could be trusted. The criterion
+adopted is agreement within one seed-to-seed standard deviation of that result, which
+Table~\ref{tab:fid} puts at $21.13$ for this network on CIFAR-10. A preliminary evaluation of the E0
+checkpoint gives an FID of $89.57$ against the $94.93$ of Chapter~\ref{ch3}, a difference of $5.36$,
+well inside that criterion.
+
+\section{Rationale for Each Change}
+\label{sec:ext-rationale}
+
+\subsection{Exponential Moving Average of the Weights (E1)}
+\label{sec:ext-ema}
+
+Stochastic gradient descent at a constant learning rate does not settle at a minimum; it fluctuates
+around one, with an amplitude governed by the learning rate and the variance of the gradient. The
+last iterate is one draw from that fluctuation. Polyak and Juditsky showed that the average of the
+iterates is a better estimate of the minimum than any single one of them, and converges at the
+optimal rate \parencite{polyak1992averaging}. Diffusion models apply the same idea as an exponential
+moving average,
+\begin{equation}
+    \bar\theta_k = d_k\,\bar\theta_{k-1} + (1 - d_k)\,\theta_k,
+    \qquad d_k = \min\!\left(d,\; \frac{1 + k}{10 + k}\right),
+    \label{eq:ext-ema}
+\end{equation}
+where $\theta_k$ are the weights after step $k$ and $\bar\theta_k$ the averaged copy. Training
+continues on $\theta_k$; only sampling uses $\bar\theta_k$. The practice is standard in the
+diffusion literature: Ho et al.\ sample from an average with $d = 0.9999$
+\parencite{arXiv:2006.11239}, and Song and Ermon identify it as one of the techniques on which the
+stability of score-based models depends \parencite{arXiv:2006.09011}.
+
+For a constant decay the average places weight $(1-d)\,d^{\,k-j}$ on the iterate $j$ steps in the
+past, so it effectively averages over the last $1/(1-d)$ steps. The warm-up in
+Equation~\eqref{eq:ext-ema} exists because a constant decay misbehaves in a short run. With
+$d = 0.9999$ and no warm-up, a quantity $d^{\,k}$ of the average still belongs to the random
+initialisation after $k$ steps, which is $31\%$ at the end of a 30-epoch run of 11\,700 steps. Under
+the warm-up the effective window grows as $(10 + k)/9$, so the average always covers roughly the most
+recent ninth of training, until the window reaches the cap $1/(1-d)$ at step $(10d - 1)/(1 - d)$.
+Figure~\ref{fig:ext-ema-window} shows the resulting window against the length of each rung.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.8\linewidth]{ext_ema_window.png}
+    \caption{Effective averaging window $1/(1 - d_k)$ of the moving average in
+    Equation~\eqref{eq:ext-ema}. The two caps coincide throughout the warm-up, which ends at step
+    17\,990 for $d = 0.9995$ and at step 89\,990 for $d = 0.9999$. Dotted lines mark the length of
+    each rung. Drawn from Equation~\eqref{eq:ext-ema}.}
+    \label{fig:ext-ema-window}
+\end{figure}
+
+Two consequences follow. The first is that the thirty-epoch rungs E1 to E3 end at step 11\,700,
+before either cap is reached, so their average is determined by the warm-up alone and the choice of
+cap has no effect on them. The second is that the cap matters only for the long rungs, and there it
+sets a trade-off between variance and lag. A longer window averages out more of the fluctuation but
+also trails further behind weights that are still improving. E4 and E5 use $d = 0.9995$, whose window
+of 2000 steps is about five epochs and $3.4\%$ of the run. E6 uses $d = 0.9999$, the value of Ho et
+al., whose window of 10\,000 steps is $1.3\%$ of its 780\,000; late in a run of that length the
+weights drift slowly enough that the longer average costs little in lag. The change of cap is part
+of E6 rather than a rung of its own for this reason, since it is a consequence of the length of
+training rather than an independent choice.
+
+\subsection{Learning-Rate Warm-Up, Gradient Clipping and Dropout (E2)}
+\label{sec:ext-stabilisers}
+
+The three changes in E2 share a purpose. Each makes training more robust without altering what is
+being learned, each is used in the reference implementation of Ho et al., and each is expected to
+have a small effect individually at thirty epochs. Giving each a rung of its own would have added two
+thirty-epoch runs to measure differences that a single seed could not resolve.
+
+\paragraph{Warm-up.} Adam scales each step by a running estimate of the second moment of the
+gradient,
+\begin{equation}
+    \theta_{k+1} = \theta_k - \eta_k\,\frac{\hat m_k}{\sqrt{\hat v_k} + \epsilon},
+    \label{eq:ext-adam}
+\end{equation}
+where $\hat m_k$ and $\hat v_k$ are the bias-corrected first and second moment estimates
+\parencite{arXiv:1412.6980}. In the first steps $\hat v_k$ is estimated from very few gradients, and
+Liu et al.\ show that the variance of the resulting adaptive learning rate is then large enough to
+drive training towards poor regions of the loss surface \parencite{arXiv:1908.03265}. A linear warm-up,
+\begin{equation}
+    \eta_k = \eta\,\min\!\left(1,\; \frac{k+1}{K}\right),
+    \label{eq:ext-warmup}
+\end{equation}
+keeps the step small until the estimate has settled. The same device is used to stabilise training
+at large batch sizes \parencite{arXiv:1706.02677}. The reference implementation uses $K = 5000$; a
+value of $K = 2000$ is used here because the thirty-epoch rungs last only 11\,700 steps, and 5000
+would spend $43\%$ of them warming up against $17\%$ for 2000.
+
+\paragraph{Gradient clipping.} The training loss mixes timesteps of very different difficulty, and
+an occasional batch produces a gradient far larger than typical. Rescaling the gradient whenever its
+norm exceeds a threshold $c$,
+\begin{equation}
+    g \leftarrow g \cdot \min\!\left(1,\; \frac{c}{\lVert g \rVert_2}\right),
+    \label{eq:ext-clip}
+\end{equation}
+bounds the size of the step while preserving its direction. The technique was introduced to control
+exploding gradients in recurrent networks \parencite{arXiv:1211.5063}; $c = 1$ is the value of the
+reference implementation, and the norm is taken over all parameters together.
+
+\paragraph{Dropout.} Rungs E4 to E6 pass over the same fifty thousand images between 150 and 2000
+times, and a network trained that long can begin to fit its training set rather than the
+distribution behind it. Dropout counters this by zeroing each activation independently with
+probability $p$ during training and rescaling the survivors,
+\begin{equation}
+    \tilde h = \frac{m \odot h}{1 - p}, \qquad m_i \sim \mathrm{Bernoulli}(1 - p),
+    \label{eq:ext-dropout}
+\end{equation}
+so that no unit can rely on the presence of any other \parencite{srivastava2014dropout}. Ho et al.\
+use $p = 0.1$ on CIFAR-10, placed before the second convolution of each residual block, and the same
+value and placement are used here. Dropout must be disabled when sampling. Left active, it would
+inject independent noise into each of the thousand predictions of the reverse process, and every
+sampling and evaluation routine therefore switches the network to inference mode explicitly.
+
+\subsection{Min-SNR Loss Weighting (E3)}
+\label{sec:ext-minsnr}
+
+The signal-to-noise ratio of the noisy image at timestep $t$ is \parencite{arXiv:2107.00630}
+\begin{equation}
+    \mathrm{SNR}(t) = \frac{\bar\alpha_t}{1 - \bar\alpha_t}.
+    \label{eq:ext-snr}
+\end{equation}
+Substituting the estimate of $x_0$ from Equation~\eqref{eq:ext-cond-mean} shows that the error in
+the predicted noise and the error in the implied clean image are related by
+\begin{equation}
+    x_0 - \hat{x}_0 = \sqrt{\frac{1 - \bar\alpha_t}{\bar\alpha_t}}\,
+    \left(\varepsilon_\theta - \varepsilon\right)
+    \quad\Longrightarrow\quad
+    \left\lVert \varepsilon - \varepsilon_\theta \right\rVert^2
+    = \mathrm{SNR}(t)\,\left\lVert x_0 - \hat{x}_0 \right\rVert^2 .
+    \label{eq:ext-eps-x0}
+\end{equation}
+The standard objective is therefore an $x_0$ objective in which timestep $t$ is weighted by
+$\mathrm{SNR}(t)$. Under the cosine schedule that weight is $24\,221$ at $t = 0$ and $2.4 \times
+10^{-9}$ at $t = 999$ (Figure~\ref{fig:ext-minsnr}a), so the objective devotes most of its accuracy
+to the nearly clean timesteps, where denoising is easiest and matters least for the sample. Hang et
+al.\ describe the timesteps as competing tasks whose gradients conflict, and propose capping the
+$x_0$ weight at a constant $\gamma$ \parencite{arXiv:2303.09556}. In the $\varepsilon$
+parameterisation used here this becomes
+\begin{equation}
+    \mathcal{L}_{\text{min-SNR}} = \mathbb{E}_{t,\,x_0,\,\varepsilon}
+    \left[ w(t)\,\left\lVert \varepsilon - \varepsilon_\theta(x_t, t) \right\rVert^2 \right],
+    \qquad
+    w(t) = \frac{\min\{\mathrm{SNR}(t),\, \gamma\}}{\mathrm{SNR}(t)} .
+    \label{eq:ext-minsnr}
+\end{equation}
+As $\gamma \to \infty$ the weight tends to one and the standard objective is recovered. With the
+authors' value of $\gamma = 5$, the weight falls below one wherever $\mathrm{SNR}(t) > 5$, which
+under this schedule is the first $26.1\%$ of timesteps, $t \le 260$
+(Figure~\ref{fig:ext-minsnr}b). Its mean over all timesteps is $0.824$, and $18.8\%$ of timesteps
+receive less than half their former weight. Because Adam normalises each step by the magnitude of
+the gradient, the reduction in the overall scale of the loss does not by itself change the step
+size; what changes is the relative emphasis among timesteps.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{ext_minsnr_weight.png}
+    \caption{(a) Signal-to-noise ratio of the noisy image under the clipped cosine schedule, with the
+    cap $\gamma = 5$ dashed. (b) The resulting weight on the $\varepsilon$-prediction loss. Timesteps
+    to the right of $t = 260$ are unaffected. Drawn from Equations~\eqref{eq:ext-snr}
+    and~\eqref{eq:ext-minsnr}, following Hang et al.\ \parencite{arXiv:2303.09556}.}
+    \label{fig:ext-minsnr}
+\end{figure}
+
+Hang et al.\ report that the weighting reaches a given FID several times sooner than the standard
+objective, but their evidence comes from networks considerably larger than the 2.47
+million-parameter network of rung E3. Its
+effect at this scale is therefore not assumed; the rung measures it, and if the weighting does not
+help, the result will show it.
+
+\subsection{Five Times the Training (E4)}
+
+E4 extends training from 30 to 150 epochs, or from 11\,700 to 58\,500 steps, and so reduces the
+shortfall in optimisation steps against Ho et al.\ from a factor of 68 to one of 14. It is the most
+direct response to the first cause and involves no change of method at all.
+
+\subsection{Increased Capacity (E5)}
+
+E5 widens the network and deepens each stage. On CIFAR-10 the widths change from $(64, 128)$ to
+$(128, 256, 256)$ with two residual blocks per stage instead of one, which takes the parameter count
+from 2.47 million to 31.46 million, $88\%$ of the 35.7 million of Ho et al. The widths and block
+count follow the published configuration, whose base width is 128 with two residual blocks at each
+resolution. On CelebA, which already has three stages, the widths change from $(32, 64, 128)$ to
+$(96, 192, 256)$, taking the count from 2.61 million to 24.41 million.
+
+E5 is trained for the same 150 epochs as E4, so the difference between them is due to capacity
+alone. That capacity arrives in three forms at once on CIFAR-10, however: wider layers, a second
+block per stage, and a third resolution stage. The rung therefore cannot serve as a test of the depth
+hypothesis raised in Section~\ref{sec:distribution}, which requires the number of stages to change
+while the width is held fixed.
+
+\subsection{Long Training (E6)}
+\label{sec:ext-long}
+
+E6 spends the remainder of the available time on the E5 network. It resumes from the E5 checkpoint,
+weights, optimiser state and moving average included, and continues to 2000 epochs on CIFAR-10 and
+700 on CelebA. On CIFAR-10 this is 780\,000 optimisation steps, $97.5\%$ of the 800\,000 of Ho et
+al., so the shortfall in steps that dominated the budget of Chapter~\ref{ch3} is essentially removed
+(Table~\ref{tab:ext-budget}). A CelebA step costs 2.8 times as much as a CIFAR-10 step, and 700 epochs,
+or 273\,000 steps, gives the two datasets roughly equal shares of the time.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Training budget of the extended rungs on CIFAR-10, continuing
+    Table~\ref{tab:budget}. E6 removes the shortfall in optimisation steps; the remaining
+    difference from the published configuration lies in the architecture.}
+    \label{tab:ext-budget}
+    \begin{tabular}{lrrrrr}
+        \toprule
+        & Chapter~\ref{ch3} & E4 & E5 & E6 & Ho et al. \\
+        \midrule
+        Parameters         & 2.47\,M & 2.47\,M & 31.46\,M & 31.46\,M & 35.7\,M \\
+        Optimisation steps & 11\,700 & 58\,500 & 58\,500  & 780\,000 & 800\,000 \\
+        Steps relative to Ho et al. & $1/68$ & $1/14$ & $1/14$ & $0.98$ & $1$ \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Resuming rather than starting afresh means that E5 is the 150-epoch point on the trajectory of E6,
+not an independent run, and costs nothing beyond its evaluation. It also means that the difference
+between them combines the length of training with the change of averaging cap discussed in
+Section~\ref{sec:ext-ema}. What remains between E6 and the published configuration is the
+architecture: the reference network has four resolution stages rather than three, self-attention at
+$16 \times 16$, and a skip connection from every block (Section~\ref{sec:simulation}). Those
+differences are deliberately left in place, since this chapter asks what training alone can achieve.
+
+\section{Sampling}
+\label{sec:ext-sampling}
+
+Every rung is evaluated with the thousand-step ancestral sampler of Chapter~\ref{ch3}, so that E0
+can be compared with the earlier result and every rung with every other. The final rung on each
+dataset is evaluated a second time with the deterministic sampler of Song et al.\
+\parencite{arXiv:2010.02502}. It visits a subsequence $\tau_1 > \tau_2 > \dots > \tau_S$ of the
+timesteps and, with its stochasticity parameter set to zero, updates
+\begin{equation}
+    x_{\tau_{i+1}} = \sqrt{\bar\alpha_{\tau_{i+1}}}\;\hat{x}_0
+    + \sqrt{1 - \bar\alpha_{\tau_{i+1}}}\;\varepsilon_\theta(x_{\tau_i}, \tau_i),
+    \qquad
+    \hat{x}_0 = \frac{x_{\tau_i} - \sqrt{1 - \bar\alpha_{\tau_i}}\,
+    \varepsilon_\theta(x_{\tau_i}, \tau_i)}{\sqrt{\bar\alpha_{\tau_i}}},
+    \label{eq:ext-ddim}
+\end{equation}
+with $\hat{x}_0$ clipped to $[-1, 1]$ as in the ancestral sampler and $\bar\alpha$ taken as one after
+the last step, so that the final update returns $\hat{x}_0$ itself. With $S = 100$ evenly spaced
+timesteps it is ten times cheaper than the ancestral sampler. It is reported as a separate row because
+a change of sampler changes the FID, and mixing the two would break the comparison along the ladder.
+
+\section{Computational Budget}
+\label{sec:ext-budget}
+
+The rungs were fitted to a fixed allowance of 72 hours on the machine of Table~\ref{tab:environment}.
+Two engineering measures made that allowance go considerably further than the settings of
+Chapter~\ref{ch3} would have allowed, and one of them proved to be a prerequisite rather than an
+optimisation.
+
+\subsection{Graph Compilation}
+
+The network was compiled with the graph compiler of PyTorch~2 \parencite{ansel2024pytorch}, which
+fuses sequences of elementwise operations such as group normalisation and activation into single
+kernels. Like the mixed precision and memory layout of Chapter~\ref{ch3}, this changes the arithmetic
+used to evaluate the model and not the model itself. Table~\ref{tab:ext-steptime} reports the
+measured effect. On the three smaller networks compilation shortens each step by a factor of 1.6 to
+2.0. A second measure, removing the transfer of the loss from the graphics card to the host at every
+step so that the processor no longer waits for each step to finish before issuing the next, gained a
+further $8\%$ on the smallest network and raised the utilisation of the card from $91\%$ to $97\%$.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Measured time per optimisation step at a batch size of 128, with the card otherwise
+    idle. Eager execution corresponds to the settings of Chapter~\ref{ch3}; its value for the
+    ResUNet on CIFAR-10 reproduces the $16.0$\,s per epoch of Table~\ref{tab:cost}.}
+    \label{tab:ext-steptime}
+    \begin{tabular}{llrrr}
+        \toprule
+        Dataset & Network & Eager & Compiled & Speed-up \\
+        \midrule
+        CIFAR-10 & 2.47\,M (E0--E4)  & $41.0$\,ms  & $21.7$\,ms  & $1.9\times$ \\
+        CIFAR-10 & 31.46\,M (E5, E6) & $221$\,ms   & $141$\,ms   & $1.6\times$ \\
+        CelebA   & 2.61\,M (E0)      & $84.1$\,ms  & $43.1$\,ms  & $2.0\times$ \\
+        CelebA   & 24.41\,M (E5, E6) & $3465$\,ms  & $390$\,ms   & $8.9\times$ \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+The last row is not a speed-up in the ordinary sense. Executed eagerly, the large CelebA network
+requires $12.9$\,GB at its peak, more than the 12\,GB the card provides. The graphics driver does not
+report this as an error but silently borrows system memory, and each step then spends most of its
+time waiting on transfers: the step takes $3.5$ seconds and the power drawn by the card falls to 88\,W,
+against 190\,W when it is computing. Compilation reduces the peak to $7.2$\,GB by not materialising
+intermediate tensors that the fused kernels no longer need, and the network fits. Without it, the
+700 epochs of E5 and E6 on CelebA would have taken more than 260 hours. The implementation caps the memory available to
+the process at $90\%$ of the card, so that an overflow of this kind stops the run with an error
+rather than slowing it unnoticed.
+
+\subsection{Compiled Sampling}
+
+The thousand steps of the reverse process were compiled in the same way and, in addition, recorded
+as a replayable sequence of kernels, which removes the cost of launching each kernel individually.
+This shortens sampling by a factor of 2.0 to 3.0, and the 2048 samples needed for the FID of the
+small CIFAR-10 network take $1.5$ minutes instead of $3.8$. Compilation reorders floating-point
+operations, so the samples are not bit-for-bit identical to those of eager execution even from the
+same noise. Its effect on the measurement was checked directly on the E0 checkpoint: eager sampling
+gives an FID of $89.57$ and an Inception Score of $4.649$, compiled sampling $90.97$ and $4.650$. The
+difference of $1.4$ FID is less than a fifth of the smallest seed-to-seed standard deviation observed
+in Chapter~\ref{ch3}, and since every rung is evaluated the same way it cannot affect
+$\Delta\mathrm{FID}$.
+
+\subsection{Schedule}
+
+Table~\ref{tab:ext-schedule} gives the resulting schedule. Training accounts for 61 of the 63 hours,
+and the four large-network rungs for $96\%$ of the total. The remaining nine hours of the allowance
+are held in reserve against the slowing of a card run continuously for three days and against
+interruptions; checkpoints are written after every epoch, so an interrupted run resumes where it
+stopped.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Schedule of the complete ladder, computed from the measured step times of
+    Table~\ref{tab:ext-steptime}. One epoch is 390 steps on both datasets.}
+    \label{tab:ext-schedule}
+    \begin{tabular}{lrrr}
+        \toprule
+        Item & Epochs & Seconds per epoch & Time \\
+        \midrule
+        CIFAR-10 E0--E3              & $4 \times 30$ & 8.5  & 17\,min \\
+        CIFAR-10 E4                  & 150           & 8.5  & 21\,min \\
+        CIFAR-10 E5                  & 150           & 55   & 2\,h 18\,min \\
+        CIFAR-10 E6 (from E5)        & $+1850$       & 55   & 28\,h 16\,min \\
+        CelebA E0                    & 30            & 16.8 & 8\,min \\
+        CelebA E5                    & 150           & 152  & 6\,h 20\,min \\
+        CelebA E6 (from E5)          & $+550$        & 152  & 23\,h 13\,min \\
+        Compilation, once per rung   &               &      & 8\,min \\
+        \midrule
+        Training                     &               &      & 61\,h \\
+        Evaluation and figures       &               &      & 1\,h 40\,min \\
+        \midrule
+        Total                        &               &      & 63\,h \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{Results}
+\label{sec:ext-results}
+
+\subsection{How the Results Are to Be Read}
+
+The rules for interpreting the ladder are fixed here, before the results are known, so that they
+cannot be chosen to suit them.
+
+\begin{enumerate}
+    \item \textbf{Only $\Delta\mathrm{FID}$ supports a causal claim.} The absolute FID of a rung
+    includes the effect of every change above it.
+
+    \item \textbf{Each rung is a single run.} Chapter~\ref{ch3} measured the seed-to-seed standard
+    deviation of FID for this network at $21.13$ on CIFAR-10 and $23.98$ on CelebA. A rung whose
+    $\Delta\mathrm{FID}$ is smaller in magnitude than that cannot be said to have had an effect, and
+    will be reported as inconclusive rather than as a small improvement.
+
+    \item \textbf{E0 must reproduce Chapter~\ref{ch3}.} The criterion is agreement with $94.93$ to
+    within one standard deviation. The preliminary evaluation reported in Section~\ref{sec:ext-design}
+    already meets it.
+
+    \item \textbf{Bundled rungs are reported as bundles.} E2 is one result for three stabilisers,
+    E5 one result for width, depth and a third stage on CIFAR-10, and E6 one result for training
+    length and averaging cap together.
+\end{enumerate}
+
+\subsection{Measurements}
+
+% 실행이 끝나면 model/extension/extension_study.json 에서 옮긴다.
+% 키: "<데이터셋>|<단계>|ancestral" 과 "<데이터셋>|E6|ddim100"
+% loss_final -> 손실, fid -> FID, is_mean -> IS. ΔFID 는 바로 위 행과의 차
+\noindent\textit{The measurements below are completed from the output of the 72-hour run described
+in Section~\ref{sec:ext-budget}. Epochs and parameter counts are fixed by the design and are given
+in advance.}
+
+\begin{table}[htbp]
+    \centering
+    \caption{Results of the ladder. $\Delta$FID is the difference from the row above and is the
+    contribution of that rung. The final row of each dataset uses the deterministic sampler and is
+    compared with the row above it.}
+    \label{tab:ext-results}
+    \small
+    \begin{tabular}{llrrrrrr}
+        \toprule
+        Dataset & Rung & Epochs & Parameters & Final loss & FID & $\Delta$FID & IS \\
+        \midrule
+        CIFAR-10 & E0 & 30   & 2\,473\,475  & --- & --- & ---  & --- \\
+        CIFAR-10 & E1 & 30   & 2\,473\,475  & --- & --- & ---  & --- \\
+        CIFAR-10 & E2 & 30   & 2\,473\,475  & --- & --- & ---  & --- \\
+        CIFAR-10 & E3 & 30   & 2\,473\,475  & --- & --- & ---  & --- \\
+        CIFAR-10 & E4 & 150  & 2\,473\,475  & --- & --- & ---  & --- \\
+        CIFAR-10 & E5 & 150  & 31\,460\,739 & --- & --- & ---  & --- \\
+        CIFAR-10 & E6 & 2000 & 31\,460\,739 & --- & --- & ---  & --- \\
+        CIFAR-10 & E6, deterministic, 100 steps & 2000 & 31\,460\,739 & & --- & --- & --- \\
+        \midrule
+        CelebA   & E0 & 30   & 2\,612\,419  & --- & --- & ---  & --- \\
+        CelebA   & E5 & 150  & 24\,408\,291 & --- & --- & ---  & --- \\
+        CelebA   & E6 & 700  & 24\,408\,291 & --- & --- & ---  & --- \\
+        CelebA   & E6, deterministic, 100 steps & 700 & 24\,408\,291 & & --- & --- & --- \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+    \centering
+    \IfFileExists{imgs/ext_fid_ladder.png}{%
+        \includegraphics[width=\linewidth]{ext_fid_ladder.png}%
+    }{%
+        \fbox{\parbox[c][4cm][c]{0.9\linewidth}{\centering\itshape
+        FID by rung; generated by Section 10 of the extension notebook}}%
+    }
+    \caption{FID at each rung, with the seed-0 ResUNet result of Chapter~\ref{ch3} dashed.}
+    \label{fig:ext-fid-ladder}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \IfFileExists{imgs/ext_samples_cifar10.png}{%
+        \includegraphics[width=\linewidth]{ext_samples_cifar10.png}%
+    }{%
+        \fbox{\parbox[c][3cm][c]{0.9\linewidth}{\centering\itshape
+        CIFAR-10 samples by rung; generated by Section 10 of the extension notebook}}%
+    }\\[3mm]
+    \IfFileExists{imgs/ext_samples_celeba.png}{%
+        \includegraphics[width=\linewidth]{ext_samples_celeba.png}%
+    }{%
+        \fbox{\parbox[c][3cm][c]{0.9\linewidth}{\centering\itshape
+        CelebA samples by rung; generated by Section 10 of the extension notebook}}%
+    }
+    \caption{Samples from each rung on CIFAR-10 (top) and CelebA (bottom). Every panel starts from
+    the same initial noise, so differences between panels are due to the training configuration
+    alone.}
+    \label{fig:ext-samples}
+\end{figure}
+
+\section{Limitations}
+\label{sec:ext-limitations}
+
+The most serious limitation is the one Chapter~\ref{ch3} was at pains to establish: a single run
+cannot distinguish an effect from the seed-to-seed variation unless the effect is large. The
+72-hour allowance was spent on length of training rather than on repetition, because the question
+of this chapter concerns absolute quality, and the reading rules above are the price of that choice.
+
+The ladder measures each change in the context of those above it. The moving average in particular
+is likely to be worth more in a short run, where the final iterate is far from settled, than it would
+be if added at the end of a long one; E1 measures it at thirty epochs and makes no claim beyond that.
+Three rungs combine several changes, as set out in Section~\ref{sec:ext-rationale}.
+
+The FID is again computed from 2048 samples, for comparability with Chapter~\ref{ch3}, and remains
+biased upward at that size; the absolute values should not be compared with published figures computed
+from fifty thousand. Compiled sampling introduces a numerical difference that was measured at
+$1.4$~FID on one checkpoint.
+
+Several remedies were deliberately left out because they would change the method rather than its
+training. Predicting the velocity $v$ instead of the noise alters the implicit weighting across
+timesteps and hence the regression to the mean discussed in Section~\ref{sec:ext-motivation}
+\parencite{arXiv:2202.00512}. Classifier-free guidance is the most effective single remedy for
+indistinct samples in current practice \parencite{arXiv:2207.12598}, but it requires a conditional
+model and does not apply to the unconditional generation studied here. And the architectural
+differences from the reference network, among them self-attention and a fourth resolution stage,
+are left in place so that the result measures what training alone can achieve.
+
+\section{Summary}
+
+This chapter applies to the proposed network the remedies that Chapter~\ref{ch3} and the Conclusions
+identified for its indistinct samples. Seven cumulative rungs add an average of the weights, three
+training stabilisers, a reweighting of the loss across timesteps, five times the training, nearly
+thirteen times the parameters and, finally, sixty-seven times the optimisation steps of the original
+experiment, which brings the step count on CIFAR-10 to within $2.5\%$ of the published configuration.
+The reasoning behind each change and the value chosen for it are set out in
+Section~\ref{sec:ext-rationale}, and the rules by which the results are to be read are fixed in
+Section~\ref{sec:ext-results} ahead of them.
+
+Two findings are already in hand. The pipeline reproduces the seed-0 result of Chapter~\ref{ch3}
+to within a quarter of a standard deviation, which validates every rung built on it. And graph
+compilation is not merely an acceleration at this scale but a condition of the experiment: without
+it the largest network does not fit in the memory of the card, and the driver's silent fallback to
+system memory makes it nine times slower without reporting any fault.
